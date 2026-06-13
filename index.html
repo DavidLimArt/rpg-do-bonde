@@ -1044,10 +1044,6 @@
             box-shadow: 0 0 8px currentColor;
         }
 
-        .inventory-item.master-item .inventory-item-name {
-            font-style: italic;
-        }
-
         /* Character death state */
         .char-dead {
             opacity: 0.6 !important;
@@ -1057,19 +1053,22 @@
             filter: grayscale(100%) !important;
         }
 
-        /* Create Modal with Point Buy Side by Side */
-        .create-modal-wrapper {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            max-width: 1400px;
+        /* Create Modal - Vertical Layout */
+        #createModal .modal-content {
+            max-width: 900px;
             max-height: 90vh;
             overflow-y: auto;
         }
 
-        .create-form-section {
+        .create-form-wrapper {
             display: flex;
             flex-direction: column;
+            gap: 20px;
+        }
+
+        .create-basic-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 15px;
         }
 
@@ -1081,8 +1080,7 @@
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            max-height: 600px;
-            overflow-y: auto;
+            width: 100%;
         }
 
         .pointbuy-section h3 {
@@ -1133,12 +1131,6 @@
 
         .pointbuy-info .points-used.exceeded {
             color: #ff4d4d;
-        }
-
-        @media (max-width: 1200px) {
-            .create-modal-wrapper {
-                grid-template-columns: 1fr;
-            }
         }
 
         /* ===== RESPONSIVO ===== */
@@ -1741,34 +1733,14 @@
                 <label>Nome do Personagem</label>
                 <input type="text" id="newCharName" placeholder="Ex: Aragorn">
             </div>
-            <div id="createModalWrapper" class="create-modal-wrapper">
-                <div class="create-form-section">
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                        <div class="form-group">
-                            <label>Classe</label>
-                            <input type="text" id="newCharClass" placeholder="Ex: Guerreiro">
-                        </div>
-                        <div class="form-group">
-                            <label>Nível</label>
-                            <input type="number" id="newCharLevel" value="1" min="1" max="20">
-                        </div>
-                    </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div class="form-group">
+                    <label>Classe</label>
+                    <input type="text" id="newCharClass" placeholder="Ex: Guerreiro">
                 </div>
-                <div class="pointbuy-section" id="pointBuyPanel">
-                    <h3>📊 Calculador de Atributos (Point Buy)</h3>
-                    <div class="form-group">
-                        <label style="font-size:11px;">Raça</label>
-                        <select id="pbRaceSelect" style="width:100%; padding:6px; font-size:11px; background:var(--bg-color); border:1px solid var(--border-color); border-radius:4px; color:var(--text-color);"></select>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:11px;">Limite de Pontos</label>
-                        <input type="number" id="pbLimitInput" value="27" min="1" style="font-size:11px;">
-                    </div>
-                    <table class="pointbuy-stats-table" id="pbStatsTable"></table>
-                    <div class="pointbuy-info">
-                        <span>Pontos: <span class="points-used" id="pbUsedPoints">0</span> / <span id="pbMaxPoints">27</span></span>
-                        <button onclick="resetPointBuy()" style="padding:4px 8px; font-size:10px;">Resetar</button>
-                    </div>
+                <div class="form-group">
+                    <label>Nível</label>
+                    <input type="number" id="newCharLevel" value="1" min="1" max="20">
                 </div>
             </div>
             <div class="form-group">
@@ -4456,7 +4428,6 @@
         });
 
         // ===== INVENTORY SYSTEM =====
-        let currentEditingInventoryItem = null;
         let currentEditingInventoryIndex = -1;
 
         async function openInventoryItemModal(itemIndex = -1) {
@@ -4468,12 +4439,12 @@
                 document.getElementById('inventoryItemName').value = item.name;
                 document.getElementById('inventoryItemDesc').value = item.desc;
                 document.getElementById('inventoryItemValue').value = item.value;
-                document.querySelector('h2.modal-title').innerText = 'Editar Item';
+                document.querySelector('#inventoryItemModal h2').innerText = 'Editar Item';
             } else {
                 document.getElementById('inventoryItemName').value = '';
                 document.getElementById('inventoryItemDesc').value = '';
                 document.getElementById('inventoryItemValue').value = '';
-                document.querySelector('h2.modal-title').innerText = 'Adicionar Item';
+                document.querySelector('#inventoryItemModal h2').innerText = 'Adicionar Item';
             }
             document.getElementById('inventoryItemPhoto').value = '';
             document.getElementById('inventoryItemModal').style.display = 'flex';
@@ -4504,14 +4475,12 @@
             }
 
             if (currentEditingInventoryIndex >= 0) {
-                // Editar item existente
                 const item = char.inventory[currentEditingInventoryIndex];
                 item.name = name;
                 item.desc = desc;
                 item.value = value;
                 if (photoData) item.photo = photoData;
             } else {
-                // Novo item
                 const item = {
                     id: Date.now(),
                     name, desc, value,
@@ -4560,7 +4529,6 @@
                     </div>
                 `;
 
-                // Drag and drop
                 div.draggable = true;
                 div.addEventListener('dragstart', (e) => {
                     e.dataTransfer.effectAllowed = 'move';
@@ -4686,6 +4654,7 @@
 
             raceSelect.addEventListener('change', (e) => {
                 pbState.race = e.target.value;
+                document.getElementById('newCharRace').value = pbState.race === 'none' ? '' : pbState.race;
                 renderPointBuyTable();
             });
 
@@ -4755,6 +4724,7 @@
             document.getElementById('pbRaceSelect').value = 'none';
             document.getElementById('pbLimitInput').value = 27;
             document.getElementById('pbMaxPoints').innerText = 27;
+            document.getElementById('newCharRace').value = '';
             renderPointBuyTable();
         }
 
@@ -4871,6 +4841,7 @@
             const name = document.getElementById('newCharName').value.trim() || 'Novo Personagem';
             const charClass = document.getElementById('newCharClass').value.trim();
             const level = parseInt(document.getElementById('newCharLevel').value) || 1;
+            const race = document.getElementById('newCharRace').value.trim();
             const photoFile = document.getElementById('newCharPhoto').files[0];
             let photoData = '';
             if (photoFile) {
@@ -4883,7 +4854,8 @@
 
             const newChar = {
                 name, class: charClass, level, photo: photoData,
-                playerName: '', race: '', background: '', alignment: '',
+                race: race,
+                playerName: '', background: '', alignment: '',
                 attributes: JSON.parse(JSON.stringify(ATTRIBUTE_DEFAULTS)),
                 skills: JSON.parse(JSON.stringify(SKILL_DEFAULTS)),
                 hitPoints: 10, maxHitPoints: 10, tempHP: 0,
@@ -4917,12 +4889,11 @@
             setTimeout(() => initPointBuy(), 100);
         };
 
-        // Update renderMestrePanel to show death state and multi-select
+        // Update renderMestrePanel to show death state
         const originalRenderMestrePanel = renderMestrePanel;
         renderMestrePanel = function() {
             originalRenderMestrePanel.call(this);
             
-            // Apply death styling
             const list = document.getElementById('mestre-list');
             if (list) {
                 Object.values(jogadoresOnline).forEach(p => {
