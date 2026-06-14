@@ -7,6 +7,206 @@
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         :root {
+            --item-master-opacity: 0.15;
+        }
+        
+        .equipment-list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            max-height: 400px;
+            padding-right: 5px;
+        }
+
+        .equipment-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            gap: 12px;
+            position: relative;
+            transition: all 0.2s;
+            cursor: grab;
+        }
+        .equipment-item:active { cursor: grabbing; }
+        .equipment-item.dragging { opacity: 0.5; border: 2px dashed var(--accent-color); }
+
+        /* Estilos da Paleta Photoshop */
+        .ps-picker-container {
+            background: #2c2c2c;
+            border: 1px solid #1a1a1a;
+            padding: 15px;
+            border-radius: 4px;
+            display: flex;
+            gap: 15px;
+            user-select: none;
+            color: #ccc;
+            font-family: sans-serif;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .ps-color-area {
+            width: 200px;
+            height: 200px;
+            position: relative;
+            cursor: crosshair;
+            background: linear-gradient(to bottom, transparent, #000), linear-gradient(to right, #fff, transparent);
+        }
+        .ps-color-area-cursor {
+            width: 8px;
+            height: 8px;
+            border: 1px solid #fff;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            box-shadow: 0 0 2px #000;
+        }
+        .ps-hue-slider {
+            width: 20px;
+            height: 200px;
+            position: relative;
+            cursor: pointer;
+            background: linear-gradient(to bottom, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
+        }
+        .ps-hue-cursor {
+            width: 100%;
+            height: 4px;
+            border: 1px solid #fff;
+            position: absolute;
+            left: 0;
+            transform: translateY(-50%);
+            pointer-events: none;
+            box-shadow: 0 0 2px #000;
+        }
+        .ps-preview-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .ps-current-color {
+            width: 60px;
+            height: 60px;
+            border: 1px solid #1a1a1a;
+        }
+        .ps-hex-input {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 4px;
+            width: 70px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .ps-label { font-size: 10px; margin-bottom: 2px; color: #888; }
+
+        .equipment-item:hover {
+            border-color: var(--accent-color);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .item-photo-box {
+            width: 50px;
+            height: 50px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: var(--bg-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .item-photo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .item-name {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-desc {
+            font-size: 12px;
+            color: #94a3b8;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+        }
+
+        .equipment-item:hover .item-actions {
+            opacity: 1;
+        }
+
+        .item-btn {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            color: #e2e8f0;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .item-btn:hover {
+            background: var(--accent-color);
+            color: var(--bg-color);
+            border-color: var(--accent-color);
+        }
+
+        .item-btn.delete:hover {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+
+        .item-master-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--accent-color);
+            color: var(--bg-color);
+            font-size: 8px;
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .equipment-list-container::-webkit-scrollbar { width: 4px; }
+        .equipment-list-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+        
+        :root {
             --bg-color: #0f172a;
             --card-bg: #1e293b;
             --text-color: #e2e8f0;
@@ -692,6 +892,195 @@
             font-weight: 800;
         }
 
+        /* Hub de Rolagem Personalizada */
+        .custom-roll-hub {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .roll-select-container {
+            position: relative;
+            flex: 1.5;
+        }
+
+        .roll-name-input {
+            width: 100%;
+            background: #064e3b !important; /* Verde mais escuro */
+            color: #ecfdf5 !important;
+            border: 1px solid #059669 !important;
+            padding: 4px 6px !important;
+            font-size: 11px !important;
+            border-radius: 3px !important;
+            height: 24px;
+        }
+
+        .roll-value-input {
+            flex: 1;
+            background: #1e3a8a !important; /* Azul mais escuro */
+            color: #eff6ff !important;
+            border: 1px solid #3b82f6 !important;
+            padding: 4px 6px !important;
+            font-size: 11px !important;
+            border-radius: 3px !important;
+            text-align: center;
+            height: 24px;
+            min-width: 50px;
+        }
+
+        .roll-btn-red {
+            background: #7f1d1d !important; /* Vermelho mais escuro */
+            color: white !important;
+            border: 1px solid #ef4444 !important;
+            padding: 0 8px !important;
+            font-weight: bold !important;
+            cursor: pointer;
+            border-radius: 3px !important;
+            height: 24px;
+            font-size: 10px !important;
+            transition: all 0.2s;
+        }
+
+        /* Dropdown de Rolagens Personalizado */
+        .rolls-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #059669;
+            border-radius: 4px;
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            margin-top: 2px;
+        }
+
+        .roll-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(5, 150, 105, 0.2);
+            font-size: 11px;
+            color: #ecfdf5;
+        }
+
+        .roll-item:hover {
+            background: rgba(5, 150, 105, 0.2);
+        }
+
+        .roll-item-info {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            padding-right: 10px;
+        }
+
+        .roll-item-val {
+            color: #3b82f6;
+            font-weight: bold;
+        }
+
+        .roll-item-delete {
+            color: #ef4444;
+            font-weight: bold;
+            padding: 0 4px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        .roll-item-delete:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .roll-btn-red:hover {
+            background: #b91c1c !important;
+            transform: scale(1.05);
+        }
+
+        /* Animação de Resultado de Dado */
+        .dice-result-popup {
+            position: absolute;
+            left: 105%;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--card-bg);
+            border: 2px solid var(--accent-color);
+            padding: 10px 15px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.8);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 120px;
+            animation: dicePopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards,
+                       diceFadeOut 0.5s ease 4.5s forwards;
+            pointer-events: none;
+        }
+
+        @keyframes dicePopIn {
+            0% { opacity: 0; transform: translateY(-50%) scale(0.5) rotate(-10deg); }
+            100% { opacity: 1; transform: translateY(-50%) scale(1) rotate(0deg); }
+        }
+
+        @keyframes diceFadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-70%) scale(0.8); }
+        }
+
+        .dice-result-char {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .dice-result-name {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 2px;
+        }
+
+        .dice-result-calc {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .dice-result-total {
+            font-size: 28px;
+            font-weight: 900;
+            color: white;
+            text-shadow: 0 0 10px var(--accent-color);
+        }
+
+        .dice-result-total.crit-success {
+            color: #4dff88;
+            text-shadow: 0 0 15px #4dff88;
+            animation: diceCrit 0.5s ease infinite alternate;
+        }
+
+        .dice-result-total.crit-fail {
+            color: #ff4d4d;
+            text-shadow: 0 0 15px #ff4d4d;
+        }
+
+        @keyframes diceCrit {
+            from { transform: scale(1); }
+            to { transform: scale(1.2); }
+        }
+
         /* Perícias - CORRIGIDO */
         .skills-wrapper {
             flex: 1;
@@ -909,236 +1298,6 @@
             font-size: 15px;
             font-weight: 600;
             margin-top: 10px;
-        }
-
-
-        /* ===== INVENTÁRIO (NOVO SISTEMA) ===== */
-        .inventory-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .inventory-add-btn {
-            width: 100%;
-            padding: 10px;
-            border: 2px dashed var(--accent-color);
-            background: transparent;
-            color: var(--accent-color);
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .inventory-add-btn:hover {
-            background: rgba(88, 166, 255, 0.1);
-        }
-
-        .inventory-items-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .inventory-item {
-            display: flex;
-            gap: 12px;
-            padding: 12px;
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            cursor: grab;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .inventory-item:hover {
-            border-color: var(--accent-color);
-            box-shadow: 0 4px 8px rgba(88, 166, 255, 0.2);
-        }
-
-        .inventory-item.dragging {
-            opacity: 0.5;
-            cursor: grabbing;
-        }
-
-        .inventory-item-photo {
-            width: 60px;
-            height: 60px;
-            border-radius: 6px;
-            object-fit: cover;
-            border: 2px solid var(--border-color);
-            background: var(--card-bg);
-            flex-shrink: 0;
-        }
-
-        .inventory-item-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .inventory-item-name {
-            font-weight: 700;
-            color: var(--accent-color);
-            font-size: 14px;
-        }
-
-        .inventory-item-desc {
-            font-size: 12px;
-            color: #94a3b8;
-        }
-
-        .inventory-item-value {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--accent-color);
-            text-align: right;
-            min-width: 80px;
-        }
-
-        .inventory-item-actions {
-            display: flex;
-            gap: 4px;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .inventory-item:hover .inventory-item-actions {
-            opacity: 1;
-        }
-
-        .inventory-item-btn {
-            width: 20px;
-            height: 20px;
-            background: transparent;
-            color: var(--accent-color);
-            border: 1px solid var(--accent-color);
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            padding: 0;
-        }
-
-        .inventory-item-btn:hover {
-            background: var(--accent-color);
-            color: var(--bg-color);
-        }
-
-        .inventory-item-btn.delete:hover {
-            background: #ef4444;
-            border-color: #ef4444;
-        }
-
-        .inventory-item.master-item {
-            border-left: 4px solid;
-        }
-
-        .inventory-item.master-item .inventory-item-photo {
-            border-color: inherit;
-            box-shadow: 0 0 8px currentColor;
-        }
-
-        .inventory-item.master-item .inventory-item-name {
-            font-style: italic;
-        }
-
-        /* Character death state */
-        .char-dead {
-            opacity: 0.6 !important;
-        }
-
-        .char-dead .mestre-card-photo {
-            filter: grayscale(100%) !important;
-        }
-
-        /* Create Modal with Point Buy Side by Side */
-        .create-modal-wrapper {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            max-width: 1400px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .create-form-section {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .pointbuy-section {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding: 15px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            max-height: 600px;
-            overflow-y: auto;
-        }
-
-        .pointbuy-section h3 {
-            color: var(--accent-color);
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-
-        .pointbuy-stats-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-        }
-
-        .pointbuy-stats-table th {
-            background: var(--accent-color);
-            color: var(--bg-color);
-            padding: 6px 4px;
-            text-align: left;
-            font-weight: 600;
-        }
-
-        .pointbuy-stats-table td {
-            padding: 6px 4px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .pointbuy-stats-table input {
-            width: 40px;
-            padding: 2px 4px;
-            font-size: 11px;
-        }
-
-        .pointbuy-info {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px;
-            background: rgba(88, 166, 255, 0.1);
-            border-radius: 4px;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-
-        .pointbuy-info .points-used {
-            font-weight: bold;
-            color: var(--accent-color);
-        }
-
-        .pointbuy-info .points-used.exceeded {
-            color: #ff4d4d;
-        }
-
-        @media (max-width: 1200px) {
-            .create-modal-wrapper {
-                grid-template-columns: 1fr;
-            }
         }
 
         /* ===== RESPONSIVO ===== */
@@ -1375,6 +1534,22 @@
         }
         .wb-element.selected .resizer { display: block !important; }
 
+    
+        .mestre-card.monster-enemy {
+            border: 2px solid #ff4d4d;
+            box-shadow: 0 0 10px rgba(255, 77, 77, 0.3);
+        }
+        .mestre-card.monster-enemy .mestre-card-name {
+            color: #ff4d4d !important;
+        }
+        .mestre-card.dragging {
+            opacity: 0.4;
+            border: 2px dashed var(--accent-color);
+        }
+        .mestre-card.drag-over {
+            border-top: 3px solid var(--accent-color);
+        }
+
     </style>
 </head>
 <body class="layout-boxed"> <!-- Layout Centralizado por Padrão -->
@@ -1387,9 +1562,10 @@
                     <button id="online-btn" onclick="initOnline()" style="border-color:#4dff88; color:#4dff88;">Conectar Mesa</button>
                     <button id="confirm-selection-btn" onclick="confirmSelection()" style="display:none; border-color:#4dff88; background:#4dff88; color:#0f172a;">Confirmar Seleção</button>
                     <button onclick="toggleMestre()" style="border-color:#bc8cf2; color:#bc8cf2;">Painel Mestre</button>
-                    <button onclick="exportAll()">Exportar Backup</button>
+                    <button onclick="exportAllCharacters()">Exportar Backup</button>
                     <button onclick="document.getElementById('importFile').click()">Importar Backup</button>
-                    <input type="file" id="importFile" style="display:none" onchange="importAll(event)">
+                    <input type="file" id="importFile" style="display:none" onchange="importAllCharacters(event)">
+                    <button id="mute-btn" onclick="toggleMute()" style="border-color:#64748b; color:#64748b; width:40px; padding:8px 0;">🔊</button>
                 </div>
         </div>
 
@@ -1456,7 +1632,7 @@
                             </div>
                             <div class="ficha-detail-item">
                                 <span class="ficha-detail-label">⚖️ Tendência</span>
-                                <input type="text" id="charAlignment" placeholder="Tendência">
+                                <input type="text" id="charAlignment" placeholder="Tendência" style="flex:1;">
                             </div>
                         </div>
                     </div>
@@ -1544,6 +1720,20 @@
                             </div>
                             <div class="death-saves-title">Testes Contra a Morte</div>
                         </div>
+
+                        <!-- Hub de Rolagem Completo (Abaixo dos Testes de Morte) -->
+                        <div class="ficha-roll-hub-full" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                            <div class="custom-roll-hub" style="width: 100%; display: flex; gap: 10px; flex-direction: column;">
+                                <div class="roll-select-container" style="width: 100%;">
+                                    <input type="text" id="roll-name" class="roll-name-input" placeholder="Nome da Rolagem (ex: Ataque Espada)" onclick="toggleRollsDropdown(event)" style="width: 100%; background: #1e293b; border-color: #4dff88;">
+                                    <div id="rolls-dropdown" class="rolls-dropdown"></div>
+                                </div>
+                                <div style="display: flex; gap: 10px; width: 100%;">
+                                    <input type="text" id="roll-value" class="roll-value-input" placeholder="Dado (ex: 1d20+5)" style="flex: 1; background: #1e293b; border-color: #58a6ff;">
+                                    <button class="roll-btn-red" onclick="executeCustomRoll()" style="padding: 0 20px; min-width: 120px;">ROLAR 🎲</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Coluna 2: Perícias -->
@@ -1585,10 +1775,12 @@
                 <!-- Seção Mesclada: Equipamento e Anotações -->
                 <div class="merged-section">
                     <div class="ficha-section-dark resizable">
-                        <h2 class="ficha-section-title-dark">🎒 Inventário</h2>
-                        <div class="inventory-container">
-                            <button class="inventory-add-btn" onclick="openInventoryItemModal()">+ Adicionar Item</button>
-                            <div class="inventory-items-list" id="inventoryList"></div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h2 class="ficha-section-title-dark" style="margin:0;">🎒 Inventário</h2>
+                            <button onclick="openItemModal()" style="font-size:11px; padding:2px 8px;">+ Item</button>
+                        </div>
+                        <div id="equipment-list" class="equipment-list-container" ondragover="event.preventDefault()" ondrop="handleItemDrop(event)">
+                            <!-- Itens dinâmicos aqui -->
                         </div>
                     </div>
                     <div class="ficha-section-dark resizable">
@@ -1741,34 +1933,14 @@
                 <label>Nome do Personagem</label>
                 <input type="text" id="newCharName" placeholder="Ex: Aragorn">
             </div>
-            <div id="createModalWrapper" class="create-modal-wrapper">
-                <div class="create-form-section">
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                        <div class="form-group">
-                            <label>Classe</label>
-                            <input type="text" id="newCharClass" placeholder="Ex: Guerreiro">
-                        </div>
-                        <div class="form-group">
-                            <label>Nível</label>
-                            <input type="number" id="newCharLevel" value="1" min="1" max="20">
-                        </div>
-                    </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div class="form-group">
+                    <label>Classe</label>
+                    <input type="text" id="newCharClass" placeholder="Ex: Guerreiro">
                 </div>
-                <div class="pointbuy-section" id="pointBuyPanel">
-                    <h3>📊 Calculador de Atributos (Point Buy)</h3>
-                    <div class="form-group">
-                        <label style="font-size:11px;">Raça</label>
-                        <select id="pbRaceSelect" style="width:100%; padding:6px; font-size:11px; background:var(--bg-color); border:1px solid var(--border-color); border-radius:4px; color:var(--text-color);"></select>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:11px;">Limite de Pontos</label>
-                        <input type="number" id="pbLimitInput" value="27" min="1" style="font-size:11px;">
-                    </div>
-                    <table class="pointbuy-stats-table" id="pbStatsTable"></table>
-                    <div class="pointbuy-info">
-                        <span>Pontos: <span class="points-used" id="pbUsedPoints">0</span> / <span id="pbMaxPoints">27</span></span>
-                        <button onclick="resetPointBuy()" style="padding:4px 8px; font-size:10px;">Resetar</button>
-                    </div>
+                <div class="form-group">
+                    <label>Nível</label>
+                    <input type="number" id="newCharLevel" value="1" min="1" max="20">
                 </div>
             </div>
             <div class="form-group">
@@ -2822,6 +2994,39 @@
             showWbElementMenu({ pageX: 200, pageY: 200, preventDefault: ()=>{} }, wbSelectedElement);
         }
 
+        // Prevenir travamentos de modais e garantir fechamento ao clicar fora
+        window.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal') || event.target.classList.contains('condition-modal')) {
+                event.target.style.display = "none";
+            }
+        });
+
+        // ===== SISTEMA DE SOM =====
+        const AUDIO_SFX = {
+            click: "https://www.soundjay.com/buttons/sounds/button-16.mp3",
+            success: "https://www.soundjay.com/buttons/sounds/button-3.mp3",
+            action: "https://www.soundjay.com/buttons/sounds/button-09.mp3",
+            damage: "https://www.soundjay.com/misc/sounds/punch-02.mp3",
+            heal: "https://www.soundjay.com/buttons/sounds/button-10.mp3",
+            notification: "https://www.soundjay.com/buttons/sounds/beep-07.mp3",
+            whisper: "https://www.soundjay.com/communication/sounds/pager-beep-1.mp3"
+        };
+        let isMuted = false;
+
+        function playSFX(type) {
+            if (isMuted) return;
+            const audio = new Audio(AUDIO_SFX[type]);
+            audio.volume = 0.3;
+            audio.play().catch(e => console.log("Erro ao tocar som:", e));
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            const btn = document.getElementById('mute-btn');
+            btn.innerText = isMuted ? '🔇' : '🔊';
+            playSFX('click');
+        }
+
         // ===== ESTADO GLOBAL =====
         let allCharacters = [];
         let currentCharacterIndex = -1;
@@ -2941,6 +3146,29 @@
             if (char.speed === undefined) char.speed = char.velocidade || 30;
             if (char.proficiencyBonus === undefined) char.proficiencyBonus = char.proficiency || char.prof || 2;
             if (char.inspiration === undefined) char.inspiration = 0;
+            if (!char.customRolls) char.customRolls = {};
+
+            // Inventário (Nova estrutura de lista)
+            if (!char.items || !Array.isArray(char.items)) {
+                char.items = [];
+                // Migrar do campo de texto antigo se existir
+                if (char.equipment && typeof char.equipment === 'string' && char.equipment.trim() !== '') {
+                    const legacyLines = char.equipment.split('\n');
+                    legacyLines.forEach((line, idx) => {
+                        if (line.trim()) {
+                            char.items.push({
+                                id: Date.now() + idx + Math.random(),
+                                name: line.trim(),
+                                description: '',
+                                photo: '',
+                                color: '',
+                                isMasterItem: false
+                            });
+                        }
+                    });
+                    char.equipment = ''; // Limpa após migrar
+                }
+            }
 
             // Grimório
             if (!char.grimorio) {
@@ -3080,6 +3308,7 @@
                 deathSaves: { success: [false, false, false], failure: [false, false, false] },
                 armorClass: 10, speed: 30, proficiencyBonus: 2, inspiration: 0,
                 traits: '', ideals: '', bonds: '', flaws: '', features: '', equipment: '', notes: '',
+                items: [],
                 photoWidth: 150, photoHeight: 150,
                 grimorio: { title: "📖 Grimório de " + name, sections: [] }
             };
@@ -3122,7 +3351,7 @@
         }
 
         function loadCharacterData(char) {
-            const ids = ['charName', 'playerName', 'charClass', 'charRace', 'charLevel', 'charBackground', 'charAlignment', 'charAC', 'charSpeed', 'charProf', 'charInspiration', 'traits', 'ideals', 'bonds', 'flaws', 'features', 'equipment', 'notes'];
+            const ids = ['charName', 'playerName', 'charClass', 'charRace', 'charLevel', 'charBackground', 'charAlignment', 'charAC', 'charSpeed', 'charProf', 'charInspiration', 'traits', 'ideals', 'bonds', 'flaws', 'features', 'notes'];
             ids.forEach(id => {
                 const prop = id === 'charName' ? 'name' : id === 'charAC' ? 'armorClass' : id === 'charProf' ? 'proficiencyBonus' : id === 'charClass' ? 'class' : id === 'charLevel' ? 'level' : id;
                 document.getElementById(id).value = char[prop] || '';
@@ -3142,7 +3371,297 @@
             updateHPDisplay();
             renderDeathSaves();
             renderGrimorio();
+            renderEquipment();
+            updateSavedRollsList();
             // Whiteboard já será inicializado quando a aba for clicada
+        }
+
+        // ===== EQUIPAMENTO =====
+        let currentEditingItemId = null;
+
+        function renderEquipment() {
+            const char = allCharacters[currentCharacterIndex];
+            const container = document.getElementById('equipment-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (!char.items || char.items.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#64748b; font-size:12px; padding:20px;">Nenhum item no inventário</div>';
+                return;
+            }
+
+            char.items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'equipment-item';
+                
+                // Aplicar cor customizada se for item do mestre
+                let style = '';
+                let nameStyle = '';
+                let descStyle = '';
+                let photoStyle = '';
+                
+                if (item.isMasterItem && item.color) {
+                    const baseColor = item.color;
+                    style = `background: ${baseColor}22; border: 1px solid ${baseColor}; box-shadow: inset 0 0 10px ${baseColor}33;`;
+                    nameStyle = `color: ${baseColor}; font-weight: 800; text-shadow: 0 0 5px ${baseColor}44;`;
+                    descStyle = `color: ${baseColor}ee;`;
+                    photoStyle = `border: 2px solid ${baseColor}; box-shadow: 0 0 8px ${baseColor};`;
+                }
+
+                card.setAttribute('style', style);
+                card.draggable = true;
+                card.ondragstart = (e) => handleItemDragStart(e, item.id);
+                card.ondragend = handleItemDragEnd;
+
+                card.innerHTML = `
+                    <div class="item-photo-box" style="${photoStyle}">
+                        ${item.photo ? `<img src="${item.photo}">` : '<span style="color:#334155; font-size:20px;">📦</span>'}
+                    </div>
+                    <div class="item-info">
+                        <div class="item-name" style="${nameStyle}">${item.name}</div>
+                        <div class="item-desc" style="${descStyle}">${item.description || 'Sem descrição'}</div>
+                    </div>
+                    <div class="item-actions">
+                        ${!item.isMasterItem ? `<button class="item-btn" onclick="openItemModal('${item.id}')">EDITAR</button>` : ''}
+                        <button class="item-btn delete" onclick="deleteItem('${item.id}')">EXCLUIR</button>
+                    </div>
+                    ${item.isMasterItem ? '<div class="item-master-badge" style="background:' + (item.color || 'var(--accent-color)') + '">Mestre</div>' : ''}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function openItemModal(itemId = null) {
+            currentEditingItemId = itemId;
+            const modal = document.getElementById('item-editor-modal');
+            const title = document.getElementById('item-modal-title');
+            
+            // Reset fields
+            document.getElementById('item-name-input').value = '';
+            document.getElementById('item-desc-input').value = '';
+            document.getElementById('item-photo-preview').src = '';
+            document.getElementById('item-photo-preview').style.display = 'none';
+            document.getElementById('item-photo-placeholder').style.display = 'block';
+
+            if (itemId) {
+                title.innerText = 'Editar Item';
+                const char = allCharacters[currentCharacterIndex];
+                const item = char.items.find(i => i.id == itemId);
+                if (item) {
+                    document.getElementById('item-name-input').value = item.name;
+                    document.getElementById('item-desc-input').value = item.description || '';
+                    if (item.photo) {
+                        document.getElementById('item-photo-preview').src = item.photo;
+                        document.getElementById('item-photo-preview').style.display = 'block';
+                        document.getElementById('item-photo-placeholder').style.display = 'none';
+                    }
+                }
+            } else {
+                title.innerText = 'Novo Item';
+            }
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeItemModal() {
+            document.getElementById('item-editor-modal').style.display = 'none';
+        }
+
+        async function saveItem() {
+            const name = document.getElementById('item-name-input').value.trim();
+            const desc = document.getElementById('item-desc-input').value.trim();
+            const photoImg = document.getElementById('item-photo-preview');
+            const photo = photoImg.style.display === 'block' ? photoImg.src : '';
+
+            if (!name) {
+                alert("O nome do item é obrigatório!");
+                return;
+            }
+
+            const char = allCharacters[currentCharacterIndex];
+            if (currentEditingItemId) {
+                const item = char.items.find(i => i.id == currentEditingItemId);
+                if (item) {
+                    item.name = name;
+                    item.description = desc;
+                    item.photo = photo;
+                }
+            } else {
+                char.items.push({
+                    id: Date.now() + Math.random(),
+                    name: name,
+                    description: desc,
+                    photo: photo,
+                    color: '',
+                    isMasterItem: false
+                });
+            }
+
+            saveAll();
+            renderEquipment();
+            closeItemModal();
+            syncPlayerData();
+        }
+
+        function deleteItem(itemId) {
+            if (confirm("Deseja excluir este item?")) {
+                const char = allCharacters[currentCharacterIndex];
+                char.items = char.items.filter(i => i.id != itemId);
+                saveAll();
+                renderEquipment();
+                syncPlayerData();
+            }
+        }
+
+        function handleItemPhotoUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                document.getElementById('item-photo-preview').src = ev.target.result;
+                document.getElementById('item-photo-preview').style.display = 'block';
+                document.getElementById('item-photo-placeholder').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Drag and Drop
+        let draggedItemId = null;
+        function handleItemDragStart(e, id) {
+            draggedItemId = id;
+            e.target.classList.add('dragging');
+        }
+        function handleItemDragEnd(e) {
+            e.target.classList.remove('dragging');
+        }
+        function handleItemDrop(e) {
+            e.preventDefault();
+            const char = allCharacters[currentCharacterIndex];
+            const dropTarget = e.target.closest('.equipment-item');
+            if (!dropTarget) return;
+            
+            const items = Array.from(document.querySelectorAll('.equipment-item'));
+            const targetIdx = items.indexOf(dropTarget);
+            const sourceIdx = char.items.findIndex(i => i.id == draggedItemId);
+            
+            if (sourceIdx !== -1 && targetIdx !== -1) {
+                const [removed] = char.items.splice(sourceIdx, 1);
+                char.items.splice(targetIdx, 0, removed);
+                saveAll();
+                renderEquipment();
+                syncPlayerData();
+            }
+        }
+
+        // Photoshop Color Picker Logic
+        let psPickerState = { h: 0, s: 100, v: 100, color: '#ff0000', onChange: null };
+        function initPsPicker(containerId, initialColor, onChange) {
+            const container = document.getElementById(containerId);
+            psPickerState.color = initialColor || '#ff0000';
+            psPickerState.onChange = onChange;
+            
+            container.innerHTML = `
+                <div class="ps-picker-container">
+                    <div class="ps-color-area" id="ps-area">
+                        <div class="ps-color-area-cursor" id="ps-area-cursor"></div>
+                    </div>
+                    <div class="ps-hue-slider" id="ps-hue">
+                        <div class="ps-hue-cursor" id="ps-hue-cursor"></div>
+                    </div>
+                    <div class="ps-preview-box">
+                        <div class="ps-label">NOVO</div>
+                        <div class="ps-current-color" id="ps-preview"></div>
+                        <div style="margin-top:10px;">
+                            <div class="ps-label">HEX</div>
+                            <input type="text" class="ps-hex-input" id="ps-hex" value="${psPickerState.color}">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const area = container.querySelector('#ps-area');
+            const hueSlider = container.querySelector('#ps-hue');
+            const hexInput = container.querySelector('#ps-hex');
+            
+            const updateUI = () => {
+                const rgb = hsvToRgb(psPickerState.h, psPickerState.s, psPickerState.v);
+                const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+                psPickerState.color = hex;
+                
+                area.style.backgroundColor = `hsl(${psPickerState.h}, 100%, 50%)`;
+                container.querySelector('#ps-preview').style.backgroundColor = hex;
+                hexInput.value = hex.toUpperCase();
+                
+                container.querySelector('#ps-area-cursor').style.left = psPickerState.s + '%';
+                container.querySelector('#ps-area-cursor').style.top = (100 - psPickerState.v) + '%';
+                container.querySelector('#ps-hue-cursor').style.top = (psPickerState.h / 360 * 100) + '%';
+                
+                if (psPickerState.onChange) psPickerState.onChange(hex);
+            };
+
+            const handleArea = (e) => {
+                const rect = area.getBoundingClientRect();
+                let x = (e.clientX - rect.left) / rect.width * 100;
+                let y = (e.clientY - rect.top) / rect.height * 100;
+                psPickerState.s = Math.max(0, Math.min(100, x));
+                psPickerState.v = Math.max(0, Math.min(100, 100 - y));
+                updateUI();
+            };
+
+            const handleHue = (e) => {
+                const rect = hueSlider.getBoundingClientRect();
+                let y = (e.clientY - rect.top) / rect.height * 360;
+                psPickerState.h = Math.max(0, Math.min(360, y));
+                updateUI();
+            };
+
+            area.onmousedown = (e) => { handleArea(e); document.onmousemove = handleArea; document.onmouseup = () => document.onmousemove = null; };
+            hueSlider.onmousedown = (e) => { handleHue(e); document.onmousemove = handleHue; document.onmouseup = () => document.onmousemove = null; };
+            hexInput.onchange = (e) => {
+                const hex = e.target.value;
+                if (/^#[0-9A-F]{6}$/i.test(hex)) {
+                    const hsv = hexToHsv(hex);
+                    psPickerState.h = hsv.h; psPickerState.s = hsv.s; psPickerState.v = hsv.v;
+                    updateUI();
+                }
+            };
+
+            const hsv = hexToHsv(psPickerState.color);
+            psPickerState.h = hsv.h; psPickerState.s = hsv.s; psPickerState.v = hsv.v;
+            updateUI();
+        }
+
+        function hsvToRgb(h, s, v) {
+            s /= 100; v /= 100;
+            let c = v * s;
+            let x = c * (1 - Math.abs((h / 60) % 2 - 1));
+            let m = v - c;
+            let r = 0, g = 0, b = 0;
+            if (h < 60) { r = c; g = x; }
+            else if (h < 120) { r = x; g = c; }
+            else if (h < 180) { g = c; b = x; }
+            else if (h < 240) { g = x; b = c; }
+            else if (h < 300) { r = x; b = c; }
+            else { r = c; b = x; }
+            return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
+        }
+        function rgbToHex(r, g, b) { return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); }
+        function hexToHsv(hex) {
+            let r = parseInt(hex.slice(1, 3), 16) / 255;
+            let g = parseInt(hex.slice(3, 5), 16) / 255;
+            let b = parseInt(hex.slice(5, 7), 16) / 255;
+            let max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+            let h, s = (max === 0 ? 0 : d / max), v = max;
+            if (max === min) h = 0;
+            else {
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return { h: h * 360, s: s * 100, v: v * 100 };
         }
 
         // ===== ATRIBUTOS =====
@@ -3193,6 +3712,156 @@
             renderSkills(); saveAll();
         }
 
+        // ===== ROLAGENS PERSONALIZADAS =====
+        function toggleRollsDropdown(e) {
+            e.stopPropagation();
+            const dropdown = document.getElementById('rolls-dropdown');
+            if (dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+            } else {
+                updateSavedRollsList();
+                dropdown.style.display = 'block';
+            }
+        }
+
+        function updateSavedRollsList() {
+            const char = allCharacters[currentCharacterIndex];
+            const dropdown = document.getElementById('rolls-dropdown');
+            if (!dropdown) return;
+            dropdown.innerHTML = '';
+            
+            if (char.customRolls && Object.keys(char.customRolls).length > 0) {
+                Object.entries(char.customRolls).forEach(([name, val]) => {
+                    const item = document.createElement('div');
+                    item.className = 'roll-item';
+                    item.onclick = (e) => {
+                        document.getElementById('roll-name').value = name;
+                        document.getElementById('roll-value').value = val;
+                        dropdown.style.display = 'none';
+                    };
+
+                    item.innerHTML = `
+                        <div class="roll-item-info">
+                            <span>${name}</span>
+                            <span class="roll-item-val">${val}</span>
+                        </div>
+                        <div class="roll-item-delete" onclick="event.stopPropagation(); deleteSavedRoll('${name}')">×</div>
+                    `;
+                    dropdown.appendChild(item);
+                });
+            } else {
+                dropdown.innerHTML = '<div style="padding:10px; font-size:10px; color:#64748b; text-align:center;">Nenhuma rolagem salva.</div>';
+            }
+        }
+
+        function deleteSavedRoll(name) {
+            const char = allCharacters[currentCharacterIndex];
+            if (char.customRolls && char.customRolls[name]) {
+                delete char.customRolls[name];
+                saveAll();
+                updateSavedRollsList();
+            }
+        }
+
+        // Fechar dropdown ao clicar fora
+        document.addEventListener('click', () => {
+            const dropdown = document.getElementById('rolls-dropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        });
+
+        function executeCustomRoll() {
+            const char = allCharacters[currentCharacterIndex];
+            const nameInput = document.getElementById('roll-name');
+            const valInput = document.getElementById('roll-value');
+            const name = nameInput.value.trim() || "Rolagem";
+            const val = valInput.value.trim();
+
+            if (!val) {
+                alert("Digite um valor de dado (ex: 1d20+2)");
+                return;
+            }
+
+            // Salvar/Atualizar no localStorage
+            if (!char.customRolls) char.customRolls = {};
+            char.customRolls[name] = val;
+            saveAll();
+
+            // Executar rolagem
+            const result = parseDice(val);
+            const total = result.total;
+            const natural = result.natural;
+
+            if (mqttClient && mqttClient.connected) {
+                const safeId = btoa(unescape(encodeURIComponent(char.name))).replace(/[/+=]/g, '');
+                mqttClient.publish(`dnd/mesa/${mesaCodigo}/rolls`, JSON.stringify({
+                    playerId: safeId,
+                    charName: char.name,
+                    rollName: name,
+                    rollCalc: val,
+                    result: total,
+                    natural: natural
+                }));
+            }
+            
+            // Mostrar localmente também
+            showDiceAnimation(char.name, name, val, total, natural);
+            playSFX('action');
+        }
+
+        function showDiceAnimation(charName, rollName, rollCalc, result, natural, isMestreRoll = false) {
+            let card = null;
+            let nameColor = 'var(--accent-color)';
+            let displayName = charName;
+
+            if (isMestreRoll) {
+                card = document.getElementById('mestre-panel');
+                nameColor = '#ffd700';
+                displayName = 'Mestre 👑';
+            } else {
+                const safeId = btoa(unescape(encodeURIComponent(charName))).replace(/[/+=]/g, '');
+                card = document.querySelector(`[data-player-id="${safeId}"]`);
+                
+                if (!card && currentCharacterIndex !== -1) {
+                    const char = allCharacters[currentCharacterIndex];
+                    if (char && char.name === charName) {
+                        card = document.getElementById('fichaHeader');
+                    }
+                }
+
+                const onlineData = jogadoresOnline[safeId];
+                if (onlineData) {
+                    const hpPerc = (onlineData.hp / onlineData.hpMax) * 100;
+                    nameColor = hpPerc > 50 ? '#4dff88' : (hpPerc > 20 ? '#ffd700' : '#ff4d4d');
+                    if (onlineData.conditionColor && onlineData.condition !== 'Nenhuma') {
+                        nameColor = onlineData.conditionColor;
+                    }
+                }
+            }
+            
+            if (card) {
+                const oldPopups = card.querySelectorAll('.dice-result-popup');
+                oldPopups.forEach(p => p.remove());
+
+                const popup = document.createElement('div');
+                popup.className = 'dice-result-popup' + (isMestreRoll ? ' mestre-secret' : '');
+                
+                let critClass = '';
+                if (rollCalc.toLowerCase().includes('1d20')) {
+                    if (natural === 20) critClass = 'crit-success';
+                    else if (natural === 1) critClass = 'crit-fail';
+                }
+
+                popup.innerHTML = `
+                    <div class="dice-result-char" style="color:${nameColor}">${displayName}</div>
+                    <div class="dice-result-name">${rollName}</div>
+                    <div class="dice-result-calc">${rollCalc}</div>
+                    <div class="dice-result-total ${critClass}">${result}</div>
+                `;
+                card.appendChild(popup);
+                setTimeout(() => { if (popup.parentNode) popup.remove(); }, 5000);
+            }
+        }
+
         function updateSkillMod(i, v) {
             allCharacters[currentCharacterIndex].skills[i].modifier = parseInt(v) || 0;
             saveAll();
@@ -3204,7 +3873,21 @@
             const perc = Math.max(0, Math.min(100, (char.hitPoints / char.maxHitPoints) * 100));
             const bar = document.getElementById('hpBar');
             bar.style.width = perc + '%';
-            bar.style.backgroundColor = perc > 50 ? '#10b981' : perc > 25 ? '#eab308' : '#ef4444';
+            
+            // Lógica de cor dinâmica baseada em condição ou vida
+            const safeId = btoa(unescape(encodeURIComponent(char.name))).replace(/[/+=]/g, '');
+            const onlineData = jogadoresOnline[safeId];
+            
+            if (onlineData && onlineData.conditionColor && onlineData.condition !== 'Nenhuma') {
+                bar.style.backgroundColor = onlineData.conditionColor;
+                document.getElementById('charName').style.color = onlineData.conditionColor;
+                document.querySelector('.ficha-header-dark').style.borderColor = onlineData.conditionColor;
+            } else {
+                bar.style.backgroundColor = perc > 50 ? '#10b981' : perc > 25 ? '#eab308' : '#ef4444';
+                document.getElementById('charName').style.color = 'var(--accent-color)';
+                document.querySelector('.ficha-header-dark').style.borderColor = 'var(--border-color)';
+            }
+            
             document.getElementById('hpDisplay').innerText = `${char.hitPoints} / ${char.maxHitPoints}`;
 
             const tempBar = document.getElementById('tempHPBar');
@@ -3905,10 +4588,12 @@
         };
 
         // ===== SISTEMA ONLINE SIMPLIFICADO (MODO MESTRE) =====
-        let mqttClient = null;
+                let mqttClient = null;
         let mesaCodigo = localStorage.getItem('dnd_mesa_codigo') || '';
         let isMestre = false;
         let jogadoresOnline = {};
+        let mestreOrder = [];
+        let publicMonsters = {};
         let isSelectingForMesa = false;
         let selectedCharIndices = new Set();
         let iamTheMestre = false;
@@ -3917,6 +4602,9 @@
         let expandedPlayers = new Set();
         let currentTargetPlayerId = null;
         let selectedConditionColor = '#ff4d4d';
+        let mestreMonsters = JSON.parse(localStorage.getItem('mestreMonsters') || '[]');
+        let expandedMonsters = new Set();
+
         
         const PALETTE_COLORS = [
             '#ff4d4d', '#4dff88', '#58a6ff', '#ffd700', '#bc8cf2',
@@ -3981,6 +4669,7 @@
                 mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/+`);
                 mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/_mestre`);
                 mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/_mestre_heartbeat`);
+                mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/_mestre_state`);
                 
                 // Sincroniza todos os selecionados
                 selectedCharIndices.forEach(idx => syncPlayerData(idx));
@@ -4010,10 +4699,27 @@
                     const parts = topic.split('/');
                     const lastPart = parts.pop();
                     
-                    if (lastPart === '_mestre') {
+                                        if (lastPart === '_mestre') {
                         mestreId = data.id;
                         if (mestreId !== mqttClient.options.clientId) iamTheMestre = false;
                         if (mestreId) lastMestreHeartbeat = Date.now();
+                        renderMestrePanel();
+                    } else if (lastPart === '_mestre_state') {
+                        mestreOrder = data.order || [];
+                        publicMonsters = data.monsters || {};
+                        renderMestrePanel();
+                    } else if (lastPart === '_mestre_state') {
+                        mestreOrder = data.order || [];
+                        publicMonsters = data.monsters || {};
+                        renderMestrePanel();
+
+                        mestreId = data.id;
+                        if (mestreId !== mqttClient.options.clientId) iamTheMestre = false;
+                        if (mestreId) lastMestreHeartbeat = Date.now();
+                        renderMestrePanel();
+                    } else if (lastPart === '_mestre_state') {
+                        mestreOrder = data.order || [];
+                        publicMonsters = data.monsters || {};
                         renderMestrePanel();
                     } else if (lastPart === '_mestre_heartbeat') {
                         if (data.id === mestreId) {
@@ -4023,6 +4729,17 @@
                         // Receber comando do mestre
                         const playerId = parts.pop();
                         handleRemoteCommand(playerId, data);
+                    } else if (lastPart === 'rolls') {
+                        // Se for uma rolagem de mestre e eu NÃO sou o mestre, só mostro se for pública
+                        if (data.isMestre) {
+                            if (!iamTheMestre) {
+                                showDiceAnimation("Mestre", data.rollName, data.rollCalc, data.result, data.natural, true);
+                            }
+                        } else {
+                            showDiceAnimation(data.charName, data.rollName, data.rollCalc, data.result, data.natural);
+                        }
+                        if (data.natural === 20) playSFX('success');
+                        else if (data.natural === 1) playSFX('damage');
                     } else {
                         const playerId = lastPart;
                         data.id = playerId;
@@ -4046,42 +4763,51 @@
             }
         }
 
+        // Debounce para evitar sobrecarga no MQTT em atualizações rápidas
+        let syncTimeout = null;
         function syncPlayerData(forcedIndex = null) {
             if (!mqttClient || !mqttClient.connected) return;
             
-            let indicesToSync = [];
-            if (forcedIndex !== null) {
-                indicesToSync = [forcedIndex];
-            } else if (currentCharacterIndex !== -1 && selectedCharIndices.has(currentCharacterIndex)) {
-                indicesToSync = [currentCharacterIndex];
-            } else if (currentCharacterIndex === -1) {
-                indicesToSync = Array.from(selectedCharIndices);
-            }
+            if (syncTimeout) clearTimeout(syncTimeout);
+            
+            syncTimeout = setTimeout(() => {
+                let indicesToSync = [];
+                if (forcedIndex !== null) {
+                    indicesToSync = [forcedIndex];
+                } else if (currentCharacterIndex !== -1 && selectedCharIndices.has(currentCharacterIndex)) {
+                    indicesToSync = [currentCharacterIndex];
+                } else if (currentCharacterIndex === -1) {
+                    indicesToSync = Array.from(selectedCharIndices);
+                }
 
-            indicesToSync.forEach(idx => {
-                const char = allCharacters[idx];
-                if (!char) return;
-                
-                const safeId = btoa(unescape(encodeURIComponent(char.name))).replace(/[/+=]/g, '');
-                const existing = jogadoresOnline[safeId] || {};
+                indicesToSync.forEach(idx => {
+                    const char = allCharacters[idx];
+                    if (!char) return;
+                    
+                    const safeId = btoa(unescape(encodeURIComponent(char.name))).replace(/[/+=]/g, '');
+                    const existing = jogadoresOnline[safeId] || {};
 
-                const data = {
-                    name: char.name || "Sem Nome",
-                    hp: char.hitPoints || 0,
-                    hpMax: char.maxHitPoints || 0,
-                    tempHP: char.tempHP || 0,
-                    ac: char.armorClass || 0,
-                    class: char.class || "",
-                    level: char.level || 1,
-                    photo: char.photo || "",
-                    lastUpdate: Date.now(),
-                    hidden: existing.hidden || false,
-                    condition: existing.condition || 'Nenhuma',
-                    conditionColor: existing.conditionColor || ''
-                };
-                mqttClient.publish(`dnd/mesa/${mesaCodigo}/${safeId}`, JSON.stringify(data), { retain: true });
-                mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/${safeId}/cmd`);
-            });
+                    const data = {
+                        name: char.name || "Sem Nome",
+                        hp: char.hitPoints || 0,
+                        hpMax: char.maxHitPoints || 0,
+                        tempHP: char.tempHP || 0,
+                        ac: char.armorClass || 0,
+                        class: char.class || "",
+                        level: char.level || 1,
+                        photo: char.photo || "",
+                        items: char.items || [],
+                        lastUpdate: Date.now(),
+                        hidden: existing.hidden || false,
+                        condition: existing.condition || 'Nenhuma',
+                        conditionColor: existing.conditionColor || ''
+                    };
+                    // QoS 0 para maior velocidade (quase instantâneo)
+                    mqttClient.publish(`dnd/mesa/${mesaCodigo}/${safeId}`, JSON.stringify(data), { retain: true, qos: 0 });
+                    mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/${safeId}/cmd`);
+                });
+                mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/rolls`);
+            }, 100); // Delay de 100ms para agrupar mudanças rápidas
         }
 
         function handleRemoteCommand(safeId, cmd) {
@@ -4094,6 +4820,37 @@
             if (idx === -1) return;
             
             const char = allCharacters[idx];
+            if (cmd.type === 'whisper') {
+                // Mostrar overlay de sussurro na ficha do jogador
+                const overlay = document.getElementById('whisper-overlay');
+                const content = document.getElementById('whisper-content');
+                if (overlay && content) {
+                    content.textContent = cmd.message;
+                    overlay.style.display = 'flex';
+                    playSFX('whisper');
+                }
+                return;
+            }
+
+            if (cmd.type === 'add_item') {
+                const newItem = {
+                    id: Date.now() + Math.random(),
+                    name: cmd.item.name,
+                    description: cmd.item.description,
+                    photo: cmd.item.photo,
+                    color: cmd.item.color,
+                    isMasterItem: true
+                };
+                if (!char.items) char.items = [];
+                char.items.push(newItem);
+                saveAll();
+                if (currentCharacterIndex === idx) {
+                    renderEquipment();
+                }
+                syncPlayerData();
+                return;
+            }
+
             if (cmd.type === 'damage') {
                 let damage = cmd.amount;
                 if (char.tempHP > 0) {
@@ -4126,6 +4883,7 @@
             isMestre = !isMestre;
             const panel = document.getElementById('mestre-panel');
             panel.style.display = isMestre ? 'block' : 'none';
+            playSFX('click');
             if (isMestre) {
                 if (!mqttClient || !mqttClient.connected) {
                     const confirmMestre = confirm("Você não está conectado a uma mesa. Deseja conectar agora para usar o Painel do Mestre?");
@@ -4135,8 +4893,143 @@
             }
         }
 
+        
         function renderMestrePanel() {
             const list = document.getElementById('mestre-list');
+            if (!list) return;
+
+            const mestreFooterRoll = document.getElementById('mestre-footer-roll');
+            if (mestreFooterRoll) {
+                mestreFooterRoll.style.display = iamTheMestre ? 'block' : 'none';
+            }
+
+            const currentInputs = {};
+            list.querySelectorAll('input').forEach(input => {
+                currentInputs[input.id] = input.value;
+            });
+
+            list.innerHTML = '';
+            const agora = Date.now();
+
+            // 1. Preparar lista de entidades (Jogadores + Monstros Públicos)
+            let entities = [];
+
+            // Adicionar monstros públicos (sempre no topo se não houver ordem definida)
+            Object.values(publicMonsters).forEach(m => {
+                entities.push({ ...m, isMonster: true });
+            });
+
+            // Adicionar jogadores online
+            Object.values(jogadoresOnline).forEach(p => {
+                if (agora - (p.lastUpdate || 0) > 600000) return;
+                entities.push({ ...p, isMonster: false });
+            });
+
+            // 2. Aplicar ordenação (mestreOrder)
+            if (mestreOrder && mestreOrder.length > 0) {
+                entities.sort((a, b) => {
+                    let idxA = mestreOrder.indexOf(a.id);
+                    let idxB = mestreOrder.indexOf(b.id);
+                    if (idxA === -1) idxA = 999;
+                    if (idxB === -1) idxB = 999;
+                    return idxA - idxB;
+                });
+            }
+
+            // 3. Garantir que monstros fiquem no topo (conforme solicitado)
+            entities.sort((a, b) => {
+                if (a.isMonster && !b.isMonster) return -1;
+                if (!a.isMonster && b.isMonster) return 1;
+                return 0;
+            });
+
+            // 4. Renderizar
+            entities.forEach((p, index) => {
+                if (!iamTheMestre && p.hidden && !p.isMonster) return;
+
+                const card = document.createElement('div');
+                card.className = 'mestre-card' + (p.isMonster ? ' monster-enemy' : '');
+                card.setAttribute('data-id', p.id);
+                card.draggable = iamTheMestre;
+
+                if (iamTheMestre) {
+                    card.ondragstart = (e) => {
+                        e.dataTransfer.setData('text/plain', p.id);
+                        card.classList.add('dragging');
+                    };
+                    card.ondragend = () => card.classList.remove('dragging');
+                    card.ondragover = (e) => {
+                        e.preventDefault();
+                        card.classList.add('drag-over');
+                    };
+                    card.ondragleave = () => card.classList.remove('drag-over');
+                    card.ondrop = (e) => {
+                        e.preventDefault();
+                        card.classList.remove('drag-over');
+                        const draggedId = e.dataTransfer.getData('text/plain');
+                        if (draggedId !== p.id) {
+                            reorderMestreEntities(draggedId, p.id);
+                        }
+                    };
+                }
+
+                const isDead = p.hp <= 0;
+                const hpPercent = (p.hp / p.hpMax) * 100;
+                let hpColor = hpPercent > 50 ? '#4dff88' : (hpPercent > 20 ? '#ffd700' : '#ff4d4d');
+                if (p.condition && p.conditionColor) hpColor = p.conditionColor;
+                if (p.isMonster) hpColor = '#ff4d4d';
+
+                const canSeeDetails = iamTheMestre || !p.isMonster;
+                const tempHPText = (canSeeDetails && p.tempHP > 0) ? `<span style="color:#58a6ff"> (+${p.tempHP})</span>` : '';
+
+                card.innerHTML = `
+                    <div class="mestre-card-main" onclick="${iamTheMestre ? (p.isMonster ? `toggleExpandMonster('${p.id}')` : `toggleExpandPlayer('${p.id}')`) : ''}">
+                        <div class="mestre-card-photo-container">
+                            <img src="${p.photo || ''}" class="mestre-card-photo" style="border-color:${isDead ? '#64748b' : hpColor}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23334155%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>?</text></svg>'">
+                            ${iamTheMestre && !p.isMonster ? `<div class="visibility-toggle" onclick="event.stopPropagation(); togglePlayerVisibility('${p.id}')">${p.hidden ? '👁️‍🗨️' : '👁️'}</div>` : ''}
+                            ${isDead ? '<div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:24px; text-shadow: 0 0 10px black; z-index:5;">💀</div>' : ''}
+                        </div>
+                        <div style="flex:1">
+                            <div class="mestre-card-name" style="font-weight:bold; color:${isDead ? '#94a3b8' : hpColor}; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ${p.name} <small style="color:#64748b; font-weight:normal;">${p.isMonster ? 'Inimigo' : `Nív ${p.level || 1} ${p.class || ''}`}</small>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-top:3px; font-size:11px;">
+                                <span>${canSeeDetails ? `HP: ${p.hp}/${p.hpMax}${tempHPText}` : 'Inimigo Desconhecido'}</span>
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    ${p.condition && p.condition !== 'Nenhuma' ? `<span class="condition-badge" style="background:${isDead ? '#475569' : hpColor}">${p.condition}</span>` : ''}
+                                    ${canSeeDetails ? `<span>🛡️ ${p.ac}</span>` : ''}
+                                </div>
+                            </div>
+                            ${canSeeDetails ? `
+                            <div style="width:100%; height:5px; background:#334155; border-radius:3px; margin-top:4px; overflow:hidden; position:relative;">
+                                <div style="width:${Math.max(0, Math.min(100, hpPercent))}%; height:100%; background:${isDead ? '#475569' : hpColor}; transition: width 0.3s;"></div>
+                                ${p.tempHP > 0 ? `<div style="position:absolute; top:0; left:0; width:${Math.min(100, (p.tempHP / p.hpMax) * 100)}%; height:100%; background:rgba(88, 166, 255, 0.5); border-right:1px solid #58a6ff;"></div>` : ''}
+                            </div>` : ''}
+                        </div>
+                    </div>
+                    ${iamTheMestre && (p.isMonster ? expandedMonsters.has(p.id) : expandedPlayers.has(p.id)) ? `
+                        <div class="mestre-hp-hub">
+                            <div class="mestre-hp-controls">
+                                <input type="text" id="${p.isMonster ? 'monster-' : ''}hp-val-${p.id}" placeholder="1d6+5" onclick="event.stopPropagation()">
+                                <button onclick="${p.isMonster ? `monsterHPAction('${p.id}', 'damage')` : `remoteHPAction('${p.id}', 'damage')`}" style="background:#ff4d4d; border-color:#ff4d4d; color:white;">Dano</button>
+                                <button onclick="${p.isMonster ? `monsterHPAction('${p.id}', 'heal')` : `remoteHPAction('${p.id}', 'heal')`}" style="background:#4dff88; border-color:#4dff88; color:#0f172a;">Cura</button>
+                                <button onclick="${p.isMonster ? `monsterHPAction('${p.id}', 'temp')` : `remoteHPAction('${p.id}', 'temp')`}" style="background:#58a6ff; border-color:#58a6ff; color:white;">Temp</button>
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+                list.appendChild(card);
+            });
+            document.getElementById('mesa-display').innerText = mesaCodigo;
+        }
+
+
+            // Salvar valores atuais dos inputs para não perder durante a digitação
+            const currentInputs = {};
+            list.querySelectorAll('input').forEach(input => {
+                currentInputs[input.id] = input.value;
+            });
+
             list.innerHTML = '';
             
             const agora = Date.now();
@@ -4146,11 +5039,13 @@
 
                 const card = document.createElement('div');
                 card.className = 'mestre-card';
+                card.setAttribute('data-player-id', p.id);
                 if (p.hidden) card.style.opacity = '0.6';
                 if (iamTheMestre) card.style.cursor = 'pointer';
                 
                 const isExpanded = expandedPlayers.has(p.id);
 
+                const isDead = p.hp <= 0;
                 const hpPercent = (p.hp / p.hpMax) * 100;
                 let hpColor = hpPercent > 50 ? '#4dff88' : (hpPercent > 20 ? '#ffd700' : '#ff4d4d');
                 
@@ -4159,26 +5054,33 @@
                     hpColor = p.conditionColor;
                 }
 
+                if (isDead) {
+                    card.style.filter = 'grayscale(100%)';
+                    card.style.opacity = '0.8';
+                    card.style.background = 'rgba(0,0,0,0.4)';
+                }
+
                 const tempHPText = p.tempHP > 0 ? `<span style="color:#58a6ff"> (+${p.tempHP})</span>` : '';
                 card.innerHTML = `
                     <div class="mestre-card-main" onclick="${iamTheMestre ? `toggleExpandPlayer('${p.id}')` : ''}">
                         <div class="mestre-card-photo-container">
-                            <img src="${p.photo || ''}" class="mestre-card-photo" style="border-color:${hpColor}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23334155%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>?</text></svg>'">
+                            <img src="${p.photo || ''}" class="mestre-card-photo" style="border-color:${isDead ? '#64748b' : hpColor}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23334155%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>?</text></svg>'">
                             ${iamTheMestre ? `<div class="visibility-toggle" onclick="event.stopPropagation(); togglePlayerVisibility('${p.id}')">${p.hidden ? '👁️‍🗨️' : '👁️'}</div>` : ''}
+                            ${isDead ? '<div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:24px; text-shadow: 0 0 10px black; z-index:5;">💀</div>' : ''}
                         </div>
                         <div style="flex:1">
-                            <div style="font-weight:bold; color:${hpColor}; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            <div style="font-weight:bold; color:${isDead ? '#94a3b8' : hpColor}; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                                 ${p.name} <small style="color:#64748b; font-weight:normal;">Nív ${p.level || 1} ${p.class || ''}</small>
                             </div>
                             <div style="display:flex; justify-content:space-between; margin-top:3px; font-size:11px;">
                                 <span>HP: ${p.hp}/${p.hpMax}${tempHPText}</span>
                                 <div style="display:flex; align-items:center; gap:5px;">
-                                    ${p.condition && p.condition !== 'Nenhuma' ? `<span class="condition-badge" style="background:${hpColor}">${p.condition}</span>` : ''}
+                                    ${p.condition && p.condition !== 'Nenhuma' ? `<span class="condition-badge" style="background:${isDead ? '#475569' : hpColor}">${p.condition}</span>` : ''}
                                     <span>🛡️ ${p.ac}</span>
                                 </div>
                             </div>
                             <div style="width:100%; height:5px; background:#334155; border-radius:3px; margin-top:4px; overflow:hidden; position:relative;">
-                                <div style="width:${Math.min(100, hpPercent)}%; height:100%; background:${hpColor}; transition: width 0.3s;"></div>
+                                <div style="width:${Math.max(0, Math.min(100, hpPercent))}%; height:100%; background:${isDead ? '#475569' : hpColor}; transition: width 0.3s;"></div>
                                 ${p.tempHP > 0 ? `<div style="position:absolute; top:0; left:0; width:${Math.min(100, (p.tempHP / p.hpMax) * 100)}%; height:100%; background:rgba(88, 166, 255, 0.5); border-right:1px solid #58a6ff;"></div>` : ''}
                             </div>
                         </div>
@@ -4195,14 +5097,28 @@
                             <button onclick="remoteHPAction('${p.id}', 'heal')" style="background:#4dff88; border-color:#4dff88; color:#0f172a;">Cura</button>
                             <button onclick="remoteHPAction('${p.id}', 'temp')" style="background:#58a6ff; border-color:#58a6ff; color:white;">Temp</button>
                         </div>
+                        <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:8px; margin-top:5px; display:flex; flex-direction:column; gap:6px;">
+                            <button onclick="openMasterItemHub('${p.id}')" style="font-size:10px; padding:4px; width:100%; border-color:var(--accent-color); color:var(--accent-color);">Adicionar Item</button>
+                            <div style="display:flex; gap:5px; align-items:center;">
+                                <input type="text" id="whisper-input-${p.id}" placeholder="Sussurrar algo..." onclick="event.stopPropagation()" style="flex:1; font-size:10px; padding:4px; background:rgba(188,140,242,0.1); border-color:#bc8cf2;">
+                                <button onclick="sendWhisperInline('${p.id}')" style="font-size:10px; padding:4px 8px; background:#bc8cf2; border-color:#bc8cf2; color:#0f172a; white-space:nowrap;">💬 Sussurar</button>
+                            </div>
+                        </div>
                     </div>` : ''}
                 `;
                 list.appendChild(card);
+
+                // Restaurar valor do input se ele existia e o usuário está digitando
+                const input = document.getElementById(`hp-val-${p.id}`);
+                if (input && currentInputs[input.id] !== undefined && document.activeElement === input) {
+                    input.value = currentInputs[input.id];
+                }
             });
             document.getElementById('mesa-display').innerText = mesaCodigo;
             
             const crownBtn = document.getElementById('mestre-crown-btn');
-            if (mestreId && mestreId !== mqttClient.options.clientId) {
+            const myClientId = mqttClient ? mqttClient.options.clientId : null;
+            if (mestreId && mestreId !== myClientId) {
                 crownBtn.style.display = 'none';
             } else {
                 crownBtn.style.display = 'flex';
@@ -4210,29 +5126,80 @@
             }
         }
 
+        
+        
+        function reorderMestreEntities(draggedId, targetId) {
+            if (!iamTheMestre) return;
+            
+            // Se mestreOrder não contiver todos, inicializar com a ordem atual do painel
+            if (!mestreOrder || mestreOrder.length === 0) {
+                const list = document.getElementById('mestre-list');
+                mestreOrder = Array.from(list.querySelectorAll('.mestre-card')).map(c => c.getAttribute('data-id'));
+            }
+
+            const fromIdx = mestreOrder.indexOf(draggedId);
+            const toIdx = mestreOrder.indexOf(targetId);
+
+            if (fromIdx !== -1 && toIdx !== -1) {
+                const item = mestreOrder.splice(fromIdx, 1)[0];
+                mestreOrder.splice(toIdx, 0, item);
+                syncMestreState();
+                renderMestrePanel();
+            }
+        }
+);
+
+            // Se mestreOrder não contiver todos, inicializar
+            if (!mestreOrder || mestreOrder.length === 0) {
+                mestreOrder = entities;
+            }
+
+            const fromIdx = mestreOrder.indexOf(draggedId);
+            const toIdx = mestreOrder.indexOf(targetId);
+
+            if (fromIdx !== -1 && toIdx !== -1) {
+                mestreOrder.splice(toIdx, 0, mestreOrder.splice(fromIdx, 1)[0]);
+                syncMestreState();
+                renderMestrePanel();
+            }
+        }
+
+        function syncMestreState() {
+            if (iamTheMestre && mqttClient && mqttClient.connected) {
+                mqttClient.publish(`dnd/mesa/${mesaCodigo}/_mestre_state`, JSON.stringify({
+                    order: mestreOrder,
+                    monsters: publicMonsters
+                }), { retain: true });
+            }
+        }
+
+        function toggleMonsterPublic(monsterId) {
+            const m = mestreMonsters.find(x => x.id === monsterId);
+            if (!m) return;
+
+            if (publicMonsters[monsterId]) {
+                delete publicMonsters[monsterId];
+            } else {
+                publicMonsters[monsterId] = { ...m, isMonster: true, hidden: false };
+            }
+            syncMestreState();
+            renderBestiary();
+            renderMestrePanel();
+        }
+
         function toggleExpandPlayer(playerId) {
             if (expandedPlayers.has(playerId)) expandedPlayers.delete(playerId);
             else expandedPlayers.add(playerId);
             renderMestrePanel();
+            playSFX('click');
         }
 
         function promptCustomCondition(playerId) {
             currentTargetPlayerId = playerId;
             document.getElementById('condition-modal').style.display = 'flex';
             document.getElementById('custom-condition-name').value = '';
-            
-            const palette = document.getElementById('condition-palette');
-            palette.innerHTML = '';
-            PALETTE_COLORS.forEach(color => {
-                const opt = document.createElement('div');
-                opt.className = 'color-option' + (color === selectedConditionColor ? ' selected' : '');
-                opt.style.background = color;
-                opt.onclick = () => {
-                    selectedConditionColor = color;
-                    document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
-                    opt.classList.add('selected');
-                };
-                palette.appendChild(opt);
+            initPsPicker('ps-picker-condition', selectedConditionColor, (hex) => {
+                selectedConditionColor = hex;
             });
         }
 
@@ -4243,10 +5210,22 @@
         function applyCustomCondition() {
             const name = document.getElementById('custom-condition-name').value.trim();
             if (!name) {
-                alert("Digite o nome da condição!");
+                alert('Digite o nome da condição!');
                 return;
             }
-            setPlayerCondition(currentTargetPlayerId, name, selectedConditionColor);
+            // Verificar se é condição de monstro ou de jogador
+            if (currentTargetPlayerId && currentTargetPlayerId.startsWith('monster:')) {
+                const monsterId = currentTargetPlayerId.replace('monster:', '');
+                const m = mestreMonsters.find(x => x.id === monsterId);
+                if (m) {
+                    m.condition = name;
+                    m.conditionColor = selectedConditionColor;
+                    localStorage.setItem('mestreMonsters', JSON.stringify(mestreMonsters));
+                    renderBestiary();
+                }
+            } else {
+                setPlayerCondition(currentTargetPlayerId, name, selectedConditionColor);
+            }
             closeConditionModal();
         }
 
@@ -4258,13 +5237,14 @@
             mqttClient.publish(`dnd/mesa/${mesaCodigo}/${playerId}`, JSON.stringify(p), { retain: true });
         }
 
+        let mestreRollPublic = false;
+
         function toggleIamMestre() {
             if (!mqttClient || !mqttClient.connected) return;
             
             const myId = mqttClient.options.clientId;
             
             if (!iamTheMestre) {
-                // Tentar assumir o papel de mestre
                 if (mestreId && mestreId !== myId) {
                     alert("Já existe um mestre nesta mesa!");
                     return;
@@ -4272,21 +5252,58 @@
                 
                 iamTheMestre = true;
                 mestreId = myId;
-                
-                // Publicar que eu sou o mestre com RETAIN
                 mqttClient.publish(`dnd/mesa/${mesaCodigo}/_mestre`, JSON.stringify({ id: myId }), { retain: true, qos: 1 });
-                
-                // Configurar um aviso de saída (Will) não é possível dinamicamente no MQTT.js sem reconectar.
-                // Então vamos usar o evento 'unload' e uma estratégia de "batida de coração" (heartbeat) curta.
                 console.log("Agora você é o mestre.");
+                syncMestreState();
             } else {
-                // Abdicar
                 iamTheMestre = false;
                 mestreId = null;
                 mqttClient.publish(`dnd/mesa/${mesaCodigo}/_mestre`, JSON.stringify({ id: null }), { retain: true, qos: 1 });
                 console.log("Você não é mais o mestre.");
             }
             renderMestrePanel();
+        }
+
+        function toggleMestreRollPublic() {
+            mestreRollPublic = !mestreRollPublic;
+            const btn = document.getElementById('mestre-roll-visibility-btn');
+            if (btn) {
+                btn.innerHTML = mestreRollPublic ? '👁️' : '👁️‍🗨️';
+                btn.title = mestreRollPublic ? 'Rolagem Pública' : 'Rolagem Privada';
+                btn.style.opacity = mestreRollPublic ? '1' : '0.3';
+            }
+        }
+
+        function executeMestreRoll() {
+            const nameInput = document.getElementById('mestre-roll-name');
+            const valInput = document.getElementById('mestre-roll-value');
+            const name = nameInput.value.trim() || "Rolagem";
+            const val = valInput.value.trim();
+
+            if (!val) {
+                alert("Digite um valor de dado (ex: 1d20+2)");
+                return;
+            }
+
+            const result = parseDice(val);
+            const total = result.total;
+            const natural = result.natural;
+
+            if (mestreRollPublic && mqttClient && mqttClient.connected) {
+                mqttClient.publish(`dnd/mesa/${mesaCodigo}/rolls`, JSON.stringify({
+                    playerId: 'mestre',
+                    charName: 'Mestre',
+                    rollName: name,
+                    rollCalc: val,
+                    result: total,
+                    natural: natural,
+                    isMestre: true
+                }));
+            }
+            
+            // Mostrar localmente para o mestre
+            showDiceAnimation("Mestre", name, val, total, natural, true);
+            playSFX('action');
         }
 
         // Heartbeat do mestre: se o mestre parar de enviar, a coroa cai
@@ -4315,19 +5332,11 @@
             mqttClient.publish(`dnd/mesa/${mesaCodigo}/${playerId}`, JSON.stringify(p), { retain: true });
         }
 
-        function setPlayerCondition(playerId, condition) {
-            const p = jogadoresOnline[playerId];
-            if (!p) return;
-            p.condition = condition;
-            mqttClient.publish(`dnd/mesa/${mesaCodigo}/${playerId}`, JSON.stringify(p), { retain: true });
-        }
-
         function parseDice(str) {
             str = str.toLowerCase().replace(/\s/g, '');
-            if (!str.includes('d')) return parseInt(str) || 0;
-            
             const parts = str.split(/([+-])/);
             let total = 0;
+            let natural = null;
             let currentOp = '+';
             
             for (let part of parts) {
@@ -4338,9 +5347,13 @@
                 
                 let val = 0;
                 if (part.includes('d')) {
-                    const [num, sides] = part.split('d').map(n => parseInt(n) || 1);
+                    const [numStr, sidesStr] = part.split('d');
+                    const num = parseInt(numStr) || 1;
+                    const sides = parseInt(sidesStr) || 20;
                     for (let i = 0; i < num; i++) {
-                        val += Math.floor(Math.random() * sides) + 1;
+                        const roll = Math.floor(Math.random() * sides) + 1;
+                        if (natural === null) natural = roll;
+                        val += roll;
                     }
                 } else {
                     val = parseInt(part) || 0;
@@ -4349,7 +5362,107 @@
                 if (currentOp === '+') total += val;
                 else total -= val;
             }
-            return total;
+            return { total, natural };
+        }
+
+        function openMasterItemHub(playerId) {
+            currentTargetPlayerId = playerId;
+            document.getElementById('master-item-modal').style.display = 'flex';
+            
+            // Reset modal
+            document.getElementById('m-item-name').value = '';
+            document.getElementById('m-item-desc').value = '';
+            document.getElementById('m-item-photo-preview').src = '';
+            document.getElementById('m-item-photo-preview').style.display = 'none';
+            document.getElementById('m-item-photo-placeholder').style.display = 'block';
+            
+            let selectedColor = '#58a6ff';
+            initPsPicker('ps-picker-item', selectedColor, (hex) => {
+                document.getElementById('master-item-modal').dataset.selectedColor = hex;
+            });
+            // Garantir que a cor inicial seja capturada
+            document.getElementById('master-item-modal').dataset.selectedColor = selectedColor;
+        }
+
+        function closeMasterItemModal() {
+            document.getElementById('master-item-modal').style.display = 'none';
+        }
+
+        function handleMasterItemPhoto(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                document.getElementById('m-item-photo-preview').src = ev.target.result;
+                document.getElementById('m-item-photo-preview').style.display = 'block';
+                document.getElementById('m-item-photo-placeholder').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function sendMasterItem() {
+            const name = document.getElementById('m-item-name').value.trim();
+            const desc = document.getElementById('m-item-desc').value.trim();
+            const photoImg = document.getElementById('m-item-photo-preview');
+            const photo = photoImg.style.display === 'block' ? photoImg.src : '';
+            const color = document.getElementById('master-item-modal').dataset.selectedColor;
+
+            if (!name) {
+                alert("Nome do item é obrigatório!");
+                return;
+            }
+
+            // Garantir que estamos enviando para o ID correto
+            if (!currentTargetPlayerId) {
+                alert("Erro: Nenhum personagem selecionado.");
+                return;
+            }
+
+            const payload = {
+                type: 'add_item',
+                item: {
+                    name: name,
+                    description: desc,
+                    photo: photo,
+                    color: color
+                }
+            };
+
+            // Enviar com QoS 1 para garantir a entrega do item
+            mqttClient.publish(`dnd/mesa/${mesaCodigo}/${currentTargetPlayerId}/cmd`, JSON.stringify(payload), { qos: 1 }, (err) => {
+                if (err) {
+                    console.error("Erro ao enviar item:", err);
+                    alert("Erro ao enviar item. Tente novamente.");
+                } else {
+                    console.log("Item enviado com sucesso para:", currentTargetPlayerId);
+                    closeMasterItemModal();
+                    alert("Item enviado com sucesso!");
+                }
+            });
+        }
+
+        function sendWhisperInline(playerId) {
+            if (!mqttClient || !mqttClient.connected) {
+                alert('Você precisa estar conectado à mesa para sussurrar!');
+                return;
+            }
+            const input = document.getElementById(`whisper-input-${playerId}`);
+            const msg = input ? input.value.trim() : '';
+            if (!msg) {
+                alert('Escreva uma mensagem antes de sussurrar!');
+                return;
+            }
+            mqttClient.publish(`dnd/mesa/${mesaCodigo}/${playerId}/cmd`, JSON.stringify({
+                type: 'whisper',
+                message: msg
+            }), { qos: 1 }, (err) => {
+                if (err) {
+                    alert('Erro ao enviar o sussurro. Tente novamente.');
+                } else {
+                    if (input) input.value = '';
+                    playSFX('whisper');
+                }
+            });
         }
 
         function remoteHPAction(playerId, type) {
@@ -4379,16 +5492,225 @@
             syncPlayerData();
         };
 
-        // Auto-sincronização a cada 30 segundos se estiver conectado
+        // Heartbeat de sincronização a cada 5 segundos para manter status online
         setInterval(() => {
             if (mqttClient && mqttClient.connected) {
                 syncPlayerData();
             }
-        }, 30000);
+        }, 5000);
 
         // Função de Reset do Painel
+        function switchMestreTab(tab) {
+            document.getElementById('mestre-players-view').style.display = tab === 'players' ? 'block' : 'none';
+            document.getElementById('mestre-bestiary-view').style.display = tab === 'bestiary' ? 'block' : 'none';
+            
+            document.getElementById('tab-mestre-players').style.background = tab === 'players' ? 'var(--accent-color)' : 'transparent';
+            document.getElementById('tab-mestre-players').style.color = tab === 'players' ? 'var(--bg-color)' : 'var(--accent-color)';
+            
+            document.getElementById('tab-mestre-bestiary').style.background = tab === 'bestiary' ? 'var(--accent-color)' : 'transparent';
+            document.getElementById('tab-mestre-bestiary').style.color = tab === 'bestiary' ? 'var(--bg-color)' : 'var(--accent-color)';
+            
+            if (tab === 'bestiary') renderBestiary();
+            playSFX('click');
+        }
+
+        function openMonsterModal() {
+            document.getElementById('monster-modal').style.display = 'flex';
+            document.getElementById('monster-name').value = '';
+            document.getElementById('monster-level').value = '';
+            document.getElementById('monster-class').value = '';
+            document.getElementById('monster-hp-max').value = '';
+            document.getElementById('monster-ac').value = '';
+            // Reset foto
+            const prevImg = document.getElementById('monster-photo-preview');
+            const prevPlaceholder = document.getElementById('monster-photo-placeholder');
+            if (prevImg) { prevImg.src = ''; prevImg.style.display = 'none'; }
+            if (prevPlaceholder) prevPlaceholder.style.display = 'flex';
+            // Limpar data-photo
+            document.getElementById('monster-modal').dataset.photo = '';
+            playSFX('click');
+        }
+
+        function handleMonsterPhotoUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const prevImg = document.getElementById('monster-photo-preview');
+                const prevPlaceholder = document.getElementById('monster-photo-placeholder');
+                prevImg.src = ev.target.result;
+                prevImg.style.display = 'block';
+                prevPlaceholder.style.display = 'none';
+                document.getElementById('monster-modal').dataset.photo = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveMonster() {
+            const hpVal = parseInt(document.getElementById('monster-hp-max').value) || 10;
+            const photoData = document.getElementById('monster-modal').dataset.photo || '';
+            const monster = {
+                id: 'm-' + Date.now(),
+                name: document.getElementById('monster-name').value.trim() || 'Monstro',
+                level: document.getElementById('monster-level').value.trim() || '1',
+                class: document.getElementById('monster-class').value.trim() || 'Inimigo',
+                hpMax: hpVal,
+                hp: hpVal,
+                ac: parseInt(document.getElementById('monster-ac').value) || 10,
+                photo: photoData,
+                tempHP: 0,
+                condition: 'Nenhuma',
+                conditionColor: ''
+            };
+            mestreMonsters.push(monster);
+            localStorage.setItem('mestreMonsters', JSON.stringify(mestreMonsters));
+            document.getElementById('monster-modal').style.display = 'none';
+            renderBestiary();
+            playSFX('success');
+        }
+
+        function renderBestiary() {
+            const list = document.getElementById('mestre-monster-list');
+            // Salvar inputs ativos
+            const savedInputs = {};
+            list.querySelectorAll('input').forEach(inp => { savedInputs[inp.id] = inp.value; });
+            list.innerHTML = '';
+            
+            if (mestreMonsters.length === 0) {
+                list.innerHTML = '<div style="font-size:12px; color:#64748b; text-align:center; padding:15px 0;">Nenhum monstro no bestiário.<br><small>Clique em "+ Adicionar Monstro"</small></div>';
+                return;
+            }
+
+            mestreMonsters.forEach((m, idx) => {
+                const isDead = m.hp <= 0;
+                const hpPercent = Math.max(0, Math.min(100, (m.hp / m.hpMax) * 100));
+                let hpColor = hpPercent > 50 ? '#4dff88' : (hpPercent > 20 ? '#ffd700' : '#ff4d4d');
+                if (m.conditionColor && m.condition !== 'Nenhuma') hpColor = m.conditionColor;
+                const isExpanded = expandedMonsters.has(m.id);
+                const tempHPText = m.tempHP > 0 ? `<span style="color:#58a6ff"> (+${m.tempHP})</span>` : '';
+
+                const card = document.createElement('div');
+                card.className = 'mestre-card';
+                if (isDead) {
+                    card.style.filter = 'grayscale(100%)';
+                    card.style.opacity = '0.8';
+                    card.style.background = 'rgba(0,0,0,0.4)';
+                }
+
+                const svgPlaceholder = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23334155%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>👹</text></svg>`;
+
+                card.innerHTML = `
+                    <div class="mestre-card-main" onclick="toggleExpandMonster('${m.id}')" style="cursor:pointer;">
+                        <div class="mestre-card-photo-container">
+                            <img src="${m.photo || svgPlaceholder}" class="mestre-card-photo" style="border-color:${isDead ? '#64748b' : hpColor}" onerror="this.src='${svgPlaceholder}'">
+                            <div style="position:absolute; top:-5px; right:-5px; background:#ef4444; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; font-size:10px; cursor:pointer; z-index:5;" onclick="event.stopPropagation(); deleteMonster('${m.id}')">×</div>
+                            ${isDead ? '<div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:20px; text-shadow:0 0 8px black; z-index:5;">💀</div>' : ''}
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:bold; color:${isDead ? '#94a3b8' : hpColor}; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ${m.name} <small style="color:#64748b; font-weight:normal;">CR ${m.level} ${m.class}</small>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-top:3px; font-size:11px; color:#94a3b8;">
+                                <span>HP: ${m.hp}/${m.hpMax}${tempHPText}</span>
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <button onclick="event.stopPropagation(); toggleMonsterPublic('${m.id}')" title="Tornar Visível para Jogadores" style="padding:2px 5px; font-size:10px; opacity: ${publicMonsters[m.id] ? '1' : '0.3'}; border-color: ${publicMonsters[m.id] ? 'var(--accent-color)' : 'var(--border-color)'};">👁️</button>${m.condition && m.condition !== 'Nenhuma' ? `<span class="condition-badge" style="background:${hpColor}">${m.condition}</span>` : ''}
+                                    <span>🛡️ ${m.ac}</span>
+                                </div>
+                            </div>
+                            <div style="width:100%; height:5px; background:#334155; border-radius:3px; margin-top:4px; overflow:hidden; position:relative;">
+                                <div style="width:${hpPercent}%; height:100%; background:${isDead ? '#475569' : hpColor}; transition:width 0.3s;"></div>
+                                ${m.tempHP > 0 ? `<div style="position:absolute; top:0; left:0; width:${Math.min(100, (m.tempHP/m.hpMax)*100)}%; height:100%; background:rgba(88,166,255,0.5); border-right:1px solid #58a6ff;"></div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    ${isExpanded ? `
+                    <div class="mestre-hp-hub">
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <button onclick="promptMonsterCondition('${m.id}')" style="font-size:9px; padding:2px 5px; flex:1;">➕ Condição</button>
+                            <button onclick="clearMonsterCondition('${m.id}')" style="font-size:9px; padding:2px 5px; background:#475569; border-color:#475569;">Limpar</button>
+                        </div>
+                        <div class="mestre-hp-controls">
+                            <input type="text" id="monster-hp-val-${m.id}" placeholder="1d6+2" onclick="event.stopPropagation()">
+                            <button onclick="monsterHPAction('${m.id}', 'damage')" style="background:#ff4d4d; border-color:#ff4d4d; color:white;">Dano</button>
+                            <button onclick="monsterHPAction('${m.id}', 'heal')" style="background:#4dff88; border-color:#4dff88; color:#0f172a;">Cura</button>
+                            <button onclick="monsterHPAction('${m.id}', 'temp')" style="background:#58a6ff; border-color:#58a6ff; color:white;">Temp</button>
+                        </div>
+                    </div>` : ''}
+                `;
+                list.appendChild(card);
+
+                // Restaurar input ativo
+                const inp = document.getElementById(`monster-hp-val-${m.id}`);
+                if (inp && savedInputs[inp.id] !== undefined && document.activeElement === inp) {
+                    inp.value = savedInputs[inp.id];
+                }
+            });
+        }
+
+        function toggleExpandMonster(id) {
+            if (expandedMonsters.has(id)) expandedMonsters.delete(id);
+            else expandedMonsters.add(id);
+            renderBestiary();
+            playSFX('click');
+        }
+
+        function promptMonsterCondition(monsterId) {
+            currentTargetPlayerId = 'monster:' + monsterId;
+            document.getElementById('condition-modal').style.display = 'flex';
+            document.getElementById('custom-condition-name').value = '';
+            initPsPicker('ps-picker-condition', selectedConditionColor, (hex) => {
+                selectedConditionColor = hex;
+            });
+        }
+
+        function clearMonsterCondition(monsterId) {
+            const m = mestreMonsters.find(x => x.id === monsterId);
+            if (!m) return;
+            m.condition = 'Nenhuma';
+            m.conditionColor = '';
+            localStorage.setItem('mestreMonsters', JSON.stringify(mestreMonsters));
+            renderBestiary();
+        }
+
+        function monsterHPAction(id, type) {
+            const m = mestreMonsters.find(x => x.id === id);
+            if (!m) return;
+            const input = document.getElementById(`monster-hp-val-${id}`);
+            const valStr = input ? input.value.trim() : '';
+            if (!valStr) return;
+            const val = parseDice(valStr);
+            if (type === 'damage') {
+                let dmg = val;
+                if (m.tempHP > 0) {
+                    if (dmg <= m.tempHP) { m.tempHP -= dmg; dmg = 0; }
+                    else { dmg -= m.tempHP; m.tempHP = 0; }
+                }
+                m.hp = Math.max(0, m.hp - dmg);
+                playSFX('damage');
+            } else if (type === 'heal') {
+                m.hp = Math.min(m.hpMax, m.hp + val);
+                playSFX('heal');
+            } else if (type === 'temp') {
+                m.tempHP = val;
+                playSFX('heal');
+            }
+            if (input) input.value = '';
+            localStorage.setItem('mestreMonsters', JSON.stringify(mestreMonsters));
+            renderBestiary();
+        }
+
+        function deleteMonster(id) {
+            if (confirm("Remover este monstro do bestiário?")) {
+                mestreMonsters = mestreMonsters.filter(m => m.id !== id);
+                localStorage.setItem('mestreMonsters', JSON.stringify(mestreMonsters));
+                renderBestiary();
+                playSFX('action');
+            }
+        }
+
         function resetMestrePanel() {
             jogadoresOnline = {};
+            
             expandedPlayers.clear();
             
             // Se eu era o mestre ou ao reiniciar a página, revogamos o título
@@ -4454,499 +5776,9 @@
             }
             if (mqttClient) mqttClient.end();
         });
-
-        // ===== INVENTORY SYSTEM =====
-        let currentEditingInventoryItem = null;
-        let currentEditingInventoryIndex = -1;
-
-        async function openInventoryItemModal(itemIndex = -1) {
-            currentEditingInventoryIndex = itemIndex;
-            const char = allCharacters[currentCharacterIndex];
-            
-            if (itemIndex >= 0 && char.inventory && char.inventory[itemIndex]) {
-                const item = char.inventory[itemIndex];
-                document.getElementById('inventoryItemName').value = item.name;
-                document.getElementById('inventoryItemDesc').value = item.desc;
-                document.getElementById('inventoryItemValue').value = item.value;
-                document.querySelector('h2.modal-title').innerText = 'Editar Item';
-            } else {
-                document.getElementById('inventoryItemName').value = '';
-                document.getElementById('inventoryItemDesc').value = '';
-                document.getElementById('inventoryItemValue').value = '';
-                document.querySelector('h2.modal-title').innerText = 'Adicionar Item';
-            }
-            document.getElementById('inventoryItemPhoto').value = '';
-            document.getElementById('inventoryItemModal').style.display = 'flex';
-        }
-
-        function closeInventoryItemModal() {
-            document.getElementById('inventoryItemModal').style.display = 'none';
-        }
-
-        async function saveInventoryItem() {
-            const char = allCharacters[currentCharacterIndex];
-            if (!char.inventory) char.inventory = [];
-
-            const name = document.getElementById('inventoryItemName').value.trim();
-            const desc = document.getElementById('inventoryItemDesc').value.trim();
-            const value = document.getElementById('inventoryItemValue').value.trim();
-            const photoFile = document.getElementById('inventoryItemPhoto').files[0];
-
-            if (!name) { alert('Nome do item é obrigatório!'); return; }
-
-            let photoData = '';
-            if (photoFile) {
-                photoData = await new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = e => resolve(e.target.result);
-                    reader.readAsDataURL(photoFile);
-                });
-            }
-
-            if (currentEditingInventoryIndex >= 0) {
-                // Editar item existente
-                const item = char.inventory[currentEditingInventoryIndex];
-                item.name = name;
-                item.desc = desc;
-                item.value = value;
-                if (photoData) item.photo = photoData;
-            } else {
-                // Novo item
-                const item = {
-                    id: Date.now(),
-                    name, desc, value,
-                    photo: photoData,
-                    masterColor: null
-                };
-                char.inventory.push(item);
-            }
-
-            saveAll();
-            renderInventory();
-            closeInventoryItemModal();
-        }
-
-        function renderInventory() {
-            const char = allCharacters[currentCharacterIndex];
-            const list = document.getElementById('inventoryList');
-            if (!list) return;
-
-            list.innerHTML = '';
-            if (!char.inventory) char.inventory = [];
-
-            char.inventory.forEach((item, idx) => {
-                const div = document.createElement('div');
-                div.className = 'inventory-item' + (item.masterColor ? ' master-item' : '');
-                if (item.masterColor) {
-                    div.style.borderLeftColor = item.masterColor;
-                    div.style.backgroundColor = item.masterColor + '4d';
-                }
-
-                const photoHtml = item.photo ? `<img src="${item.photo}" class="inventory-item-photo" style="${item.masterColor ? 'border-color:' + item.masterColor : ''}">` : '<div class="inventory-item-photo" style="display:flex; align-items:center; justify-content:center; background:var(--card-bg); color:#64748b;">📦</div>';
-
-                const isEditable = !item.masterColor;
-                const editBtn = isEditable ? `<button class="inventory-item-btn" onclick="openInventoryItemModal(${idx})" title="Editar">✎</button>` : '';
-
-                div.innerHTML = `
-                    ${photoHtml}
-                    <div class="inventory-item-content">
-                        <div class="inventory-item-name">${item.name}</div>
-                        <div class="inventory-item-desc">${item.desc || 'Sem descrição'}</div>
-                    </div>
-                    <div class="inventory-item-value">${item.value || '—'}</div>
-                    <div class="inventory-item-actions">
-                        ${editBtn}
-                        <button class="inventory-item-btn delete" onclick="deleteInventoryItem(${idx})" title="Deletar">×</button>
-                    </div>
-                `;
-
-                // Drag and drop
-                div.draggable = true;
-                div.addEventListener('dragstart', (e) => {
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', idx);
-                    div.classList.add('dragging');
-                });
-                div.addEventListener('dragend', () => div.classList.remove('dragging'));
-                div.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                });
-                div.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
-                    if (fromIdx !== idx) {
-                        const item = char.inventory[fromIdx];
-                        char.inventory.splice(fromIdx, 1);
-                        char.inventory.splice(idx, 0, item);
-                        saveAll();
-                        renderInventory();
-                    }
-                });
-
-                list.appendChild(div);
-            });
-        }
-
-        function deleteInventoryItem(idx) {
-            if (confirm('Deseja deletar este item?')) {
-                allCharacters[currentCharacterIndex].inventory.splice(idx, 1);
-                saveAll();
-                renderInventory();
-            }
-        }
-
-        // ===== POINT BUY CALCULATOR =====
-        const pbRacesData = {
-            "Aarakocra": {"dex": 2, "wis": 1},
-            "Aasimar (Protector)": {"cha": 2, "wis": 1},
-            "Aasimar (Scourge)": {"cha": 2, "con": 1},
-            "Aasimar (Fallen)": {"cha": 2, "str": 1},
-            "Bugbear": {"str": 2, "dex": 1},
-            "Centaur": {"str": 2, "wis": 1},
-            "Changeling": {"cha": 2},
-            "Dragonborn": {"str": 2, "cha": 1},
-            "Dwarf (Hill)": {"con": 2, "wis": 1},
-            "Dwarf (Mountain)": {"con": 2, "str": 2},
-            "Elf (High)": {"dex": 2, "int": 1},
-            "Elf (Wood)": {"dex": 2, "wis": 1},
-            "Elf (Drow)": {"dex": 2, "cha": 1},
-            "Firbolg": {"wis": 2, "str": 1},
-            "Genasi (Air)": {"con": 2, "dex": 1},
-            "Genasi (Earth)": {"con": 2, "str": 1},
-            "Genasi (Fire)": {"con": 2, "int": 1},
-            "Genasi (Water)": {"con": 2, "wis": 1},
-            "Gith (Githyanki)": {"str": 2, "int": 1},
-            "Gith (Githzerai)": {"wis": 2, "int": 1},
-            "Gnome (Forest)": {"int": 2, "dex": 1},
-            "Gnome (Rock)": {"int": 2, "con": 1},
-            "Goblin": {"dex": 2, "con": 1},
-            "Goliath": {"str": 2, "con": 1},
-            "Grung": {"dex": 2, "con": 1},
-            "Half-Elf": {"cha": 2},
-            "Half-Orc": {"str": 2, "con": 1},
-            "Halfling (Lightfoot)": {"dex": 2, "cha": 1},
-            "Halfling (Stout)": {"dex": 2, "con": 1},
-            "Hobgoblin": {"con": 2, "int": 1},
-            "Human": {"str": 1, "dex": 1, "con": 1, "int": 1, "wis": 1, "cha": 1},
-            "Kalashtar": {"wis": 2, "cha": 1},
-            "Kenku": {"dex": 2, "wis": 1},
-            "Kobold": {"dex": 2},
-            "Leonin": {"con": 2, "str": 1},
-            "Lizardfolk": {"con": 2, "wis": 1},
-            "Locathah": {"str": 2, "dex": 1},
-            "Loxodon": {"con": 2, "wis": 1},
-            "Minotaur": {"str": 2, "con": 1},
-            "Orc": {"str": 2, "con": 1},
-            "Satyr": {"cha": 2, "dex": 1},
-            "Shifter (Beasthide)": {"con": 2, "str": 1},
-            "Shifter (Longtooth)": {"str": 2, "dex": 1},
-            "Shifter (Swiftstride)": {"dex": 2, "cha": 1},
-            "Shifter (Wildhunt)": {"wis": 2, "dex": 1},
-            "Simic Hybrid": {"con": 2},
-            "Tabaxi": {"dex": 2, "cha": 1},
-            "Tiefling": {"cha": 2, "int": 1},
-            "Tortle": {"str": 2, "wis": 1},
-            "Triton": {"str": 1, "con": 1, "cha": 1},
-            "Vedalken": {"int": 2, "wis": 1},
-            "Warforged": {"con": 2},
-            "Yuan-Ti Pureblood": {"cha": 2, "int": 1}
-        };
-
-        const pbAttributes = [
-            { id: 'str', name: 'Força' },
-            { id: 'dex', name: 'Destreza' },
-            { id: 'con', name: 'Constituição' },
-            { id: 'int', name: 'Inteligência' },
-            { id: 'wis', name: 'Sabedoria' },
-            { id: 'cha', name: 'Carisma' }
-        ];
-
-        const pbPointCosts = {
-            8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9
-        };
-
-        let pbState = {
-            scores: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 },
-            race: 'none',
-            limit: 27
-        };
-
-        function initPointBuy() {
-            const raceSelect = document.getElementById('pbRaceSelect');
-            if (!raceSelect) return;
-            
-            raceSelect.innerHTML = '<option value="none">Nenhuma / Custom</option>';
-            Object.keys(pbRacesData).sort().forEach(race => {
-                const opt = document.createElement('option');
-                opt.value = race;
-                opt.innerText = race;
-                raceSelect.appendChild(opt);
-            });
-
-            raceSelect.addEventListener('change', (e) => {
-                pbState.race = e.target.value;
-                renderPointBuyTable();
-            });
-
-            const limitInput = document.getElementById('pbLimitInput');
-            if (limitInput) {
-                limitInput.addEventListener('input', (e) => {
-                    pbState.limit = parseInt(e.target.value) || 0;
-                    document.getElementById('pbMaxPoints').innerText = pbState.limit;
-                    renderPointBuyTable();
-                });
-            }
-
-            renderPointBuyTable();
-        }
-
-        function pbCalculateModifier(score) {
-            return Math.floor((score - 10) / 2);
-        }
-
-        function renderPointBuyTable() {
-            const tbody = document.getElementById('pbStatsTable');
-            if (!tbody) return;
-            tbody.innerHTML = '';
-            let totalUsed = 0;
-
-            const currentRaceBonus = pbRacesData[pbState.race] || {};
-
-            pbAttributes.forEach(attr => {
-                const base = pbState.scores[attr.id];
-                const racial = currentRaceBonus[attr.id] || 0;
-                const total = base + racial;
-                const mod = pbCalculateModifier(total);
-                const cost = pbPointCosts[base];
-                totalUsed += cost;
-
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td style="font-weight:bold; color:var(--accent-color);">${attr.name}</td>
-                    <td style="text-align:center;"><input type="number" value="${base}" min="8" max="15" onchange="pbUpdateScore('${attr.id}', this.value)" style="width:35px;"></td>
-                    <td style="text-align:center;">${racial > 0 ? '+' + racial : racial < 0 ? racial : '0'}</td>
-                    <td style="text-align:center; font-weight:bold; color:var(--accent-color);">${total}</td>
-                    <td style="text-align:center; color:#4dff88;">${mod >= 0 ? '+' + mod : mod}</td>
-                    <td style="text-align:center;">${cost}</td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            const usedSpan = document.getElementById('pbUsedPoints');
-            usedSpan.innerText = totalUsed;
-            if (totalUsed > pbState.limit) {
-                usedSpan.classList.add('exceeded');
-            } else {
-                usedSpan.classList.remove('exceeded');
-            }
-        }
-
-        window.pbUpdateScore = function(id, val) {
-            let num = parseInt(val);
-            if (num < 8) num = 8;
-            if (num > 15) num = 15;
-            pbState.scores[id] = num;
-            renderPointBuyTable();
-        };
-
-        function resetPointBuy() {
-            pbState = { scores: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }, race: 'none', limit: 27 };
-            document.getElementById('pbRaceSelect').value = 'none';
-            document.getElementById('pbLimitInput').value = 27;
-            document.getElementById('pbMaxPoints').innerText = 27;
-            renderPointBuyTable();
-        }
-
-        // ===== MASTER PANEL MULTI-SELECT =====
-        let masterApplyMode = false;
-        let masterSelectedPlayers = new Set();
-
-        function toggleMasterApplyMode(playerId) {
-            masterApplyMode = !masterApplyMode;
-            masterSelectedPlayers.clear();
-            if (masterApplyMode) {
-                masterSelectedPlayers.add(playerId);
-            }
-            renderMestrePanel();
-        }
-
-        function togglePlayerSelection(playerId) {
-            if (!masterApplyMode) return;
-            if (masterSelectedPlayers.has(playerId)) {
-                masterSelectedPlayers.delete(playerId);
-            } else {
-                masterSelectedPlayers.add(playerId);
-            }
-            renderMestrePanel();
-        }
-
-        // ===== MASTER ITEM SENDING =====
-        let masterItemTargetId = null;
-        let masterItemColor = null;
-
-        function openMasterItemModal(playerId) {
-            masterItemTargetId = playerId;
-            masterItemColor = null;
-            document.getElementById('masterItemName').value = '';
-            document.getElementById('masterItemDesc').value = '';
-            document.getElementById('masterItemPhoto').value = '';
-            document.getElementById('masterItemValue').value = '';
-            
-            const palette = document.getElementById('masterColorPalette');
-            palette.innerHTML = '';
-            const colors = ['#ff4d4d', '#ffd700', '#4dff88', '#58a6ff', '#bc8cf2', '#ff69b4', '#00ced1', '#ffa500'];
-            colors.forEach(color => {
-                const btn = document.createElement('div');
-                btn.style.cssText = `width:40px; height:40px; background:${color}; border-radius:6px; cursor:pointer; border:2px solid transparent; transition:all 0.2s;`;
-                btn.onclick = () => {
-                    masterItemColor = color;
-                    document.querySelectorAll('#masterColorPalette > div').forEach(b => b.style.borderColor = 'transparent');
-                    btn.style.borderColor = 'white';
-                };
-                palette.appendChild(btn);
-            });
-            
-            document.getElementById('masterItemModal').style.display = 'flex';
-        }
-
-        function closeMasterItemModal() {
-            document.getElementById('masterItemModal').style.display = 'none';
-        }
-
-        async function sendMasterItem() {
-            const name = document.getElementById('masterItemName').value.trim();
-            if (!name) { alert('Nome do item é obrigatório!'); return; }
-
-            const desc = document.getElementById('masterItemDesc').value.trim();
-            const value = document.getElementById('masterItemValue').value.trim();
-            const photoFile = document.getElementById('masterItemPhoto').files[0];
-
-            let photoData = '';
-            if (photoFile) {
-                photoData = await new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = e => resolve(e.target.result);
-                    reader.readAsDataURL(photoFile);
-                });
-            }
-
-            const targetChar = allCharacters.find(c => {
-                const id = btoa(unescape(encodeURIComponent(c.name))).replace(/[/+=]/g, '');
-                return id === masterItemTargetId;
-            });
-
-            if (targetChar) {
-                if (!targetChar.inventory) targetChar.inventory = [];
-                targetChar.inventory.push({
-                    id: Date.now(),
-                    name, desc, value, photo: photoData,
-                    masterColor: masterItemColor
-                });
-                saveAll();
-                
-                if (mqttClient && mqttClient.connected) {
-                    const data = {
-                        type: 'add_item',
-                        item: { name, desc, value, photo: photoData, masterColor: masterItemColor }
-                    };
-                    mqttClient.publish(`dnd/mesa/${mesaCodigo}/${masterItemTargetId}/cmd`, JSON.stringify(data));
-                }
-            }
-
-            closeMasterItemModal();
-            alert('Item enviado com sucesso!');
-        }
-
-        // ===== MODIFY EXISTING FUNCTIONS =====
-        const originalLoadCharacterData = loadCharacterData;
-        loadCharacterData = function(char) {
-            originalLoadCharacterData.call(this, char);
-            if (!char.inventory) char.inventory = [];
-            renderInventory();
-        };
-
-        const originalCreateNewCharacter = createNewCharacter;
-        createNewCharacter = async function() {
-            const name = document.getElementById('newCharName').value.trim() || 'Novo Personagem';
-            const charClass = document.getElementById('newCharClass').value.trim();
-            const level = parseInt(document.getElementById('newCharLevel').value) || 1;
-            const photoFile = document.getElementById('newCharPhoto').files[0];
-            let photoData = '';
-            if (photoFile) {
-                photoData = await new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = e => resolve(e.target.result);
-                    reader.readAsDataURL(photoFile);
-                });
-            }
-
-            const newChar = {
-                name, class: charClass, level, photo: photoData,
-                playerName: '', race: '', background: '', alignment: '',
-                attributes: JSON.parse(JSON.stringify(ATTRIBUTE_DEFAULTS)),
-                skills: JSON.parse(JSON.stringify(SKILL_DEFAULTS)),
-                hitPoints: 10, maxHitPoints: 10, tempHP: 0,
-                deathSaves: { success: [false, false, false], failure: [false, false, false] },
-                armorClass: 10, speed: 30, proficiencyBonus: 2, inspiration: 0,
-                traits: '', ideals: '', bonds: '', flaws: '', features: '', equipment: '', notes: '',
-                photoWidth: 150, photoHeight: 150,
-                grimorio: { title: "📖 Grimório de " + name, sections: [] },
-                inventory: []
-            };
-
-            // Apply Point Buy if defined
-            if (pbState && pbState.scores) {
-                const attrMap = { str: 'strength', dex: 'dexterity', con: 'constitution', int: 'intelligence', wis: 'wisdom', cha: 'charisma' };
-                Object.entries(pbState.scores).forEach(([key, val]) => {
-                    newChar.attributes[attrMap[key]].value = val;
-                });
-            }
-
-            allCharacters.push(newChar);
-            saveAll();
-            renderCharacterGrid();
-            closeCreateModal();
-        };
-
-        // Initialize Point Buy on modal open
-        const originalOpenCreateModal = openCreateModal;
-        openCreateModal = function() {
-            originalOpenCreateModal.call(this);
-            pbState = { scores: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }, race: 'none', limit: 27 };
-            setTimeout(() => initPointBuy(), 100);
-        };
-
-        // Update renderMestrePanel to show death state and multi-select
-        const originalRenderMestrePanel = renderMestrePanel;
-        renderMestrePanel = function() {
-            originalRenderMestrePanel.call(this);
-            
-            // Apply death styling
-            const list = document.getElementById('mestre-list');
-            if (list) {
-                Object.values(jogadoresOnline).forEach(p => {
-                    if (p.hp <= 0) {
-                        const cards = list.querySelectorAll('.mestre-card');
-                        cards.forEach(card => {
-                            const nameEl = card.querySelector('[style*="font-weight:bold"]');
-                            if (nameEl && nameEl.innerText.includes(p.name)) {
-                                card.classList.add('char-dead');
-                                const photo = card.querySelector('.mestre-card-photo');
-                                if (photo) photo.style.filter = 'grayscale(100%)';
-                                if (!nameEl.innerText.includes('☠️')) {
-                                    nameEl.innerHTML = nameEl.innerHTML.replace(p.name, '☠️ ' + p.name);
-                                }
-                            }
-                        });
-                    }
-                });
-            }
-        };
-
     </script>
     <!-- UI DO PAINEL DO MESTRE -->
-    <div id="mestre-panel" style="display:none; position:fixed; top:20px; right:20px; width:280px; background:var(--card-bg); border:2px solid var(--accent-color); border-radius:12px; padding:15px; z-index:9999; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: default;">
+    <div id="mestre-panel" style="display:none; position:fixed; top:20px; right:20px; width:300px; background:var(--card-bg); border:2px solid var(--accent-color); border-radius:12px; padding:15px; z-index:9999; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: default;">
         <div id="mestre-panel-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; cursor: move; user-select: none; padding-bottom: 5px; border-bottom: 1px solid var(--border-color);">
             <div style="display:flex; align-items:center; gap:8px;">
                 <div id="status-dot" style="width:8px; height:8px; border-radius:50%; background:#64748b;"></div>
@@ -4955,8 +5787,33 @@
             </div>
             <button onclick="toggleMestre()" style="padding:2px 8px; font-size:10px;">X</button>
         </div>
-        <div id="mestre-list" style="display:flex; flex-direction:column; gap:10px; max-height:400px; overflow-y:auto;">
-            <div style="font-size:12px; color:#64748b; text-align:center;">Aguardando jogadores...</div>
+
+        <div style="display:flex; gap:5px; margin-bottom:10px; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+            <button onclick="switchMestreTab('players')" id="tab-mestre-players" style="flex:1; font-size:10px; padding:4px; background:var(--accent-color); color:var(--bg-color);">Jogadores</button>
+            <button onclick="switchMestreTab('bestiary')" id="tab-mestre-bestiary" style="flex:1; font-size:10px; padding:4px;">Bestiário</button>
+        </div>
+
+        <div id="mestre-players-view">
+            <div id="mestre-list" style="display:flex; flex-direction:column; gap:10px; max-height:400px; overflow-y:auto;">
+                <div style="font-size:12px; color:#64748b; text-align:center;">Aguardando jogadores...</div>
+            </div>
+            
+            <!-- Hub de Rolagem do Mestre (Rodapé) -->
+            <div id="mestre-footer-roll" style="display:none; margin-top:10px; border-top:1px solid var(--border-color); padding-top:10px;">
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <input type="text" id="mestre-roll-name" placeholder="Nome" style="flex:1; font-size:10px; padding:4px;">
+                    <input type="text" id="mestre-roll-value" placeholder="1d20+2" style="width:60px; font-size:10px; padding:4px;">
+                    <button onclick="executeMestreRoll()" style="padding:4px 8px; font-size:10px;">🎲</button>
+                    <button id="mestre-roll-visibility-btn" onclick="toggleMestreRollPublic()" title="Rolagem Privada" style="opacity: 0.3; padding:4px 8px; font-size:10px;">👁️‍🗨️</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="mestre-bestiary-view" style="display:none;">
+            <button onclick="openMonsterModal()" style="width:100%; font-size:10px; margin-bottom:10px; border-style:dashed;">+ Adicionar Monstro</button>
+            <div id="mestre-monster-list" style="display:flex; flex-direction:column; gap:10px; max-height:400px; overflow-y:auto;">
+                <!-- Monstros aqui -->
+            </div>
         </div>
         <div style="margin-top:10px; font-size:10px; color:#64748b; border-top:1px solid var(--border-color); padding-top:5px; display:flex; justify-content:space-between;">
             <span>Mesa: <span id="mesa-display"></span></span>
@@ -4964,17 +5821,140 @@
         </div>
     </div>
     
+    <!-- MODAL DE EDITOR DE ITEM -->
+    <div id="item-editor-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="item-modal-title" class="modal-title">Novo Item</h3>
+            <div style="display:flex; gap:20px;">
+                <div style="flex-shrink:0;">
+                    <div class="item-photo-box" style="width:100px; height:100px; cursor:pointer;" onclick="document.getElementById('item-photo-input').click()">
+                        <img id="item-photo-preview" style="display:none;">
+                        <span id="item-photo-placeholder" style="color:#334155; font-size:40px;">📦</span>
+                    </div>
+                    <input type="file" id="item-photo-input" style="display:none;" accept="image/*" onchange="handleItemPhotoUpload(event)">
+                    <div style="font-size:10px; color:#64748b; text-align:center; margin-top:5px;">Clique para foto</div>
+                </div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+                    <div class="form-group">
+                        <label>Nome do Item</label>
+                        <input type="text" id="item-name-input" placeholder="Ex: Espada Longa +1">
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <textarea id="item-desc-input" style="height:80px; resize:none;" placeholder="Propriedades, peso, dano..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button onclick="closeItemModal()" style="flex:1; border-color:#475569; color:#94a3b8;">Cancelar</button>
+                <button onclick="saveItem()" style="flex:1;">Salvar Item</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de sussurro removido - agora é inline no hub do mestre -->
+
+    <!-- NOTIFICAÇÃO DE SUSSURRO RECEBIDO -->
+    <div id="whisper-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center; backdrop-filter:blur(10px);">
+        <div style="background:var(--card-bg); border:2px solid #bc8cf2; padding:40px; border-radius:20px; max-width:500px; width:90%; text-align:center; box-shadow: 0 0 50px rgba(188, 140, 242, 0.3);">
+            <div style="font-size:40px; margin-bottom:20px;">💬</div>
+            <div style="color:#bc8cf2; text-transform:uppercase; letter-spacing:2px; font-size:12px; font-weight:bold; margin-bottom:10px;">Sussurro do Mestre</div>
+            <div id="whisper-content" style="font-size:20px; line-height:1.5; color:white; font-style:italic; margin-bottom:30px;"></div>
+            <button onclick="document.getElementById('whisper-overlay').style.display='none'" style="background:#bc8cf2; color:var(--bg-color); border:none; padding:10px 30px; font-weight:bold; border-radius:30px;">Entendido</button>
+        </div>
+    </div>
+
+    <!-- MODAL DE ENVIO DE ITEM PELO MESTRE -->
+    <div id="master-item-modal" class="modal">
+        <div class="modal-content" style="max-width:400px;">
+            <h3 class="modal-title">Adicionar Item</h3>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; gap:15px; align-items:center;">
+                    <div class="item-photo-box" style="width:70px; height:70px; cursor:pointer;" onclick="document.getElementById('m-item-photo-input').click()">
+                        <img id="m-item-photo-preview" style="display:none;">
+                        <span id="m-item-photo-placeholder" style="color:#334155; font-size:30px;">📦</span>
+                    </div>
+                    <input type="file" id="m-item-photo-input" style="display:none;" accept="image/*" onchange="handleMasterItemPhoto(event)">
+                    <div style="flex:1;">
+                        <label style="font-size:11px; color:#94a3b8; text-transform:uppercase;">Nome do Item</label>
+                        <input type="text" id="m-item-name" placeholder="Ex: Relíquia Sagrada">
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:11px; color:#94a3b8; text-transform:uppercase;">Descrição</label>
+                    <textarea id="m-item-desc" style="height:60px; resize:none;" placeholder="Poderes especiais..."></textarea>
+                </div>
+                <div>
+                    <label style="font-size:11px; color:#94a3b8; text-transform:uppercase;">Cor de Destaque (Estilo Photoshop)</label>
+                    <div id="ps-picker-item"></div>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button onclick="closeMasterItemModal()" style="flex:1; border-color:#475569; color:#94a3b8;">Cancelar</button>
+                <button onclick="sendMasterItem()" style="flex:1;">Adicionar Item</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ADICIONAR MONSTRO -->
+    <div id="monster-modal" class="modal">
+        <div class="modal-content" style="max-width:420px;">
+            <h3 class="modal-title">🐉 Adicionar ao Bestiário</h3>
+            <div style="display:flex; gap:15px; margin-bottom:15px;">
+                <!-- Foto do monstro -->
+                <div style="flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:6px;">
+                    <div class="item-photo-box" style="width:90px; height:90px; cursor:pointer; border-color:#bc8cf2;" onclick="document.getElementById('monster-photo-input').click()">
+                        <img id="monster-photo-preview" style="display:none; width:100%; height:100%; object-fit:cover;">
+                        <div id="monster-photo-placeholder" style="display:flex; flex-direction:column; align-items:center; gap:4px; color:#64748b;">
+                            <span style="font-size:28px;">🐉</span>
+                            <span style="font-size:9px;">Foto</span>
+                        </div>
+                    </div>
+                    <input type="file" id="monster-photo-input" style="display:none;" accept="image/*" onchange="handleMonsterPhotoUpload(event)">
+                    <span style="font-size:9px; color:#64748b;">Clique para foto</span>
+                </div>
+                <!-- Campos do monstro -->
+                <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Nome</label>
+                        <input type="text" id="monster-name" placeholder="Ex: Goblin Arqueiro">
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>CR / Nível</label>
+                            <input type="text" id="monster-level" placeholder="Ex: 1/2">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Tipo / Classe</label>
+                            <input type="text" id="monster-class" placeholder="Ex: Humanoide">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>HP Máximo</label>
+                            <input type="number" id="monster-hp-max" placeholder="Ex: 30" min="1">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>CA (Armadura)</label>
+                            <input type="number" id="monster-ac" placeholder="Ex: 13" min="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:5px;">
+                <button onclick="document.getElementById('monster-modal').style.display='none'" style="flex:1; border-color:#475569; color:#94a3b8;">Cancelar</button>
+                <button onclick="saveMonster()" style="flex:1; background:#bc8cf2; border-color:#bc8cf2; color:#0f172a;">Adicionar Monstro</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL DE CONDIÇÃO PERSONALIZADA -->
-    <div id="condition-modal" class="condition-modal">
+    <div id="condition-modal" class="condition-modal" style="width:auto; max-width:450px;">
         <h3 style="margin:0; color:var(--accent-color); font-size:16px;">Nova Condição</h3>
         <input type="text" id="custom-condition-name" placeholder="Ex: Envenenado" style="width:100%; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:white; padding:8px; border-radius:6px;">
         <div>
-            <label style="font-size:12px; color:#64748b;">Escolha a Cor:</label>
-            <div id="condition-palette" class="color-palette">
-                <!-- Cores serão inseridas via JS -->
-            </div>
+            <label style="font-size:12px; color:#64748b;">Escolha a Cor (Estilo Photoshop):</label>
+            <div id="ps-picker-condition"></div>
         </div>
-        <div style="display:flex; gap:10px; margin-top:5px;">
+        <div style="display:flex; gap:10px; margin-top:15px;">
             <button onclick="closeConditionModal()" style="flex:1; background:#475569; border-color:#475569;">Cancelar</button>
             <button onclick="applyCustomCondition()" style="flex:1; background:var(--accent-color); border-color:var(--accent-color); color:#0f172a;">Concluir</button>
         </div>
@@ -5150,65 +6130,22 @@
         }
         #mestre-list::-webkit-scrollbar { width: 4px; }
         #mestre-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+    
+        .mestre-card.monster-enemy {
+            border: 2px solid #ff4d4d;
+            box-shadow: 0 0 10px rgba(255, 77, 77, 0.3);
+        }
+        .mestre-card.monster-enemy .mestre-card-name {
+            color: #ff4d4d !important;
+        }
+        .mestre-card.dragging {
+            opacity: 0.4;
+            border: 2px dashed var(--accent-color);
+        }
+        .mestre-card.drag-over {
+            border-top: 3px solid var(--accent-color);
+        }
+
     </style>
-
-    <!-- MODAL ADICIONAR/EDITAR ITEM AO INVENTÁRIO -->
-    <div id="inventoryItemModal" class="modal">
-        <div class="modal-content">
-            <h2 class="modal-title">Adicionar/Editar Item</h2>
-            <div class="form-group">
-                <label>Nome do Item</label>
-                <input type="text" id="inventoryItemName" placeholder="Ex: Espada Longa">
-            </div>
-            <div class="form-group">
-                <label>Descrição</label>
-                <textarea id="inventoryItemDesc" placeholder="Descrição do item..." style="height:80px;"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Foto (Opcional)</label>
-                <input type="file" id="inventoryItemPhoto" accept="image/*">
-            </div>
-            <div class="form-group">
-                <label>Valor Importante (Ex: Dano 1d6+2)</label>
-                <input type="text" id="inventoryItemValue" placeholder="Ex: Dano 1d6+2">
-            </div>
-            <div class="modal-footer">
-                <button onclick="closeInventoryItemModal()">Cancelar</button>
-                <button style="background:var(--accent-color); color:var(--bg-color); border-color:var(--accent-color);" onclick="saveInventoryItem()">Salvar Item</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL MASTER ENVIAR ITEM -->
-    <div id="masterItemModal" class="modal">
-        <div class="modal-content">
-            <h2 class="modal-title">Enviar Item Lendário</h2>
-            <div class="form-group">
-                <label>Nome do Item</label>
-                <input type="text" id="masterItemName" placeholder="Ex: Espada Flamejante">
-            </div>
-            <div class="form-group">
-                <label>Descrição</label>
-                <textarea id="masterItemDesc" placeholder="Descrição..." style="height:80px;"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Foto (Opcional)</label>
-                <input type="file" id="masterItemPhoto" accept="image/*">
-            </div>
-            <div class="form-group">
-                <label>Valor (Ex: Dano 2d6+3)</label>
-                <input type="text" id="masterItemValue" placeholder="Ex: Dano 2d6+3">
-            </div>
-            <div class="form-group">
-                <label>Cor do Item (Lendário)</label>
-                <div id="masterColorPalette" style="display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:8px;"></div>
-            </div>
-            <div class="modal-footer">
-                <button onclick="closeMasterItemModal()">Cancelar</button>
-                <button style="background:var(--accent-color); color:var(--bg-color); border-color:var(--accent-color);" onclick="sendMasterItem()">Enviar Item</button>
-            </div>
-        </div>
-    </div>
-
-    </body>
+</body>
 </html>
