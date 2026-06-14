@@ -1534,22 +1534,6 @@
         }
         .wb-element.selected .resizer { display: block !important; }
 
-    
-        .mestre-card.monster-enemy {
-            border: 2px solid #ff4d4d;
-            box-shadow: 0 0 10px rgba(255, 77, 77, 0.3);
-        }
-        .mestre-card.monster-enemy .mestre-card-name {
-            color: #ff4d4d !important;
-        }
-        .mestre-card.dragging {
-            opacity: 0.4;
-            border: 2px dashed var(--accent-color);
-        }
-        .mestre-card.drag-over {
-            border-top: 3px solid var(--accent-color);
-        }
-
     </style>
 </head>
 <body class="layout-boxed"> <!-- Layout Centralizado por Padrão -->
@@ -4588,12 +4572,10 @@
         };
 
         // ===== SISTEMA ONLINE SIMPLIFICADO (MODO MESTRE) =====
-                let mqttClient = null;
+        let mqttClient = null;
         let mesaCodigo = localStorage.getItem('dnd_mesa_codigo') || '';
         let isMestre = false;
         let jogadoresOnline = {};
-        let mestreOrder = [];
-        let publicMonsters = {};
         let isSelectingForMesa = false;
         let selectedCharIndices = new Set();
         let iamTheMestre = false;
@@ -4604,7 +4586,6 @@
         let selectedConditionColor = '#ff4d4d';
         let mestreMonsters = JSON.parse(localStorage.getItem('mestreMonsters') || '[]');
         let expandedMonsters = new Set();
-
         
         const PALETTE_COLORS = [
             '#ff4d4d', '#4dff88', '#58a6ff', '#ffd700', '#bc8cf2',
@@ -4669,7 +4650,6 @@
                 mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/+`);
                 mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/_mestre`);
                 mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/_mestre_heartbeat`);
-                mqttClient.subscribe(`dnd/mesa/${mesaCodigo}/_mestre_state`);
                 
                 // Sincroniza todos os selecionados
                 selectedCharIndices.forEach(idx => syncPlayerData(idx));
@@ -4699,27 +4679,10 @@
                     const parts = topic.split('/');
                     const lastPart = parts.pop();
                     
-                                        if (lastPart === '_mestre') {
+                    if (lastPart === '_mestre') {
                         mestreId = data.id;
                         if (mestreId !== mqttClient.options.clientId) iamTheMestre = false;
                         if (mestreId) lastMestreHeartbeat = Date.now();
-                        renderMestrePanel();
-                    } else if (lastPart === '_mestre_state') {
-                        mestreOrder = data.order || [];
-                        publicMonsters = data.monsters || {};
-                        renderMestrePanel();
-                    } else if (lastPart === '_mestre_state') {
-                        mestreOrder = data.order || [];
-                        publicMonsters = data.monsters || {};
-                        renderMestrePanel();
-
-                        mestreId = data.id;
-                        if (mestreId !== mqttClient.options.clientId) iamTheMestre = false;
-                        if (mestreId) lastMestreHeartbeat = Date.now();
-                        renderMestrePanel();
-                    } else if (lastPart === '_mestre_state') {
-                        mestreOrder = data.order || [];
-                        publicMonsters = data.monsters || {};
                         renderMestrePanel();
                     } else if (lastPart === '_mestre_heartbeat') {
                         if (data.id === mestreId) {
@@ -4893,136 +4856,14 @@
             }
         }
 
-        
         function renderMestrePanel() {
             const list = document.getElementById('mestre-list');
-            if (!list) return;
-
+            
+            // Mostrar/Esconder Hub de Rolagem do Mestre no Rodapé
             const mestreFooterRoll = document.getElementById('mestre-footer-roll');
             if (mestreFooterRoll) {
                 mestreFooterRoll.style.display = iamTheMestre ? 'block' : 'none';
             }
-
-            const currentInputs = {};
-            list.querySelectorAll('input').forEach(input => {
-                currentInputs[input.id] = input.value;
-            });
-
-            list.innerHTML = '';
-            const agora = Date.now();
-
-            // 1. Preparar lista de entidades (Jogadores + Monstros Públicos)
-            let entities = [];
-
-            // Adicionar monstros públicos (sempre no topo se não houver ordem definida)
-            Object.values(publicMonsters).forEach(m => {
-                entities.push({ ...m, isMonster: true });
-            });
-
-            // Adicionar jogadores online
-            Object.values(jogadoresOnline).forEach(p => {
-                if (agora - (p.lastUpdate || 0) > 600000) return;
-                entities.push({ ...p, isMonster: false });
-            });
-
-            // 2. Aplicar ordenação (mestreOrder)
-            if (mestreOrder && mestreOrder.length > 0) {
-                entities.sort((a, b) => {
-                    let idxA = mestreOrder.indexOf(a.id);
-                    let idxB = mestreOrder.indexOf(b.id);
-                    if (idxA === -1) idxA = 999;
-                    if (idxB === -1) idxB = 999;
-                    return idxA - idxB;
-                });
-            }
-
-            // 3. Garantir que monstros fiquem no topo (conforme solicitado)
-            entities.sort((a, b) => {
-                if (a.isMonster && !b.isMonster) return -1;
-                if (!a.isMonster && b.isMonster) return 1;
-                return 0;
-            });
-
-            // 4. Renderizar
-            entities.forEach((p, index) => {
-                if (!iamTheMestre && p.hidden && !p.isMonster) return;
-
-                const card = document.createElement('div');
-                card.className = 'mestre-card' + (p.isMonster ? ' monster-enemy' : '');
-                card.setAttribute('data-id', p.id);
-                card.draggable = iamTheMestre;
-
-                if (iamTheMestre) {
-                    card.ondragstart = (e) => {
-                        e.dataTransfer.setData('text/plain', p.id);
-                        card.classList.add('dragging');
-                    };
-                    card.ondragend = () => card.classList.remove('dragging');
-                    card.ondragover = (e) => {
-                        e.preventDefault();
-                        card.classList.add('drag-over');
-                    };
-                    card.ondragleave = () => card.classList.remove('drag-over');
-                    card.ondrop = (e) => {
-                        e.preventDefault();
-                        card.classList.remove('drag-over');
-                        const draggedId = e.dataTransfer.getData('text/plain');
-                        if (draggedId !== p.id) {
-                            reorderMestreEntities(draggedId, p.id);
-                        }
-                    };
-                }
-
-                const isDead = p.hp <= 0;
-                const hpPercent = (p.hp / p.hpMax) * 100;
-                let hpColor = hpPercent > 50 ? '#4dff88' : (hpPercent > 20 ? '#ffd700' : '#ff4d4d');
-                if (p.condition && p.conditionColor) hpColor = p.conditionColor;
-                if (p.isMonster) hpColor = '#ff4d4d';
-
-                const canSeeDetails = iamTheMestre || !p.isMonster;
-                const tempHPText = (canSeeDetails && p.tempHP > 0) ? `<span style="color:#58a6ff"> (+${p.tempHP})</span>` : '';
-
-                card.innerHTML = `
-                    <div class="mestre-card-main" onclick="${iamTheMestre ? (p.isMonster ? `toggleExpandMonster('${p.id}')` : `toggleExpandPlayer('${p.id}')`) : ''}">
-                        <div class="mestre-card-photo-container">
-                            <img src="${p.photo || ''}" class="mestre-card-photo" style="border-color:${isDead ? '#64748b' : hpColor}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23334155%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>?</text></svg>'">
-                            ${iamTheMestre && !p.isMonster ? `<div class="visibility-toggle" onclick="event.stopPropagation(); togglePlayerVisibility('${p.id}')">${p.hidden ? '👁️‍🗨️' : '👁️'}</div>` : ''}
-                            ${isDead ? '<div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:24px; text-shadow: 0 0 10px black; z-index:5;">💀</div>' : ''}
-                        </div>
-                        <div style="flex:1">
-                            <div class="mestre-card-name" style="font-weight:bold; color:${isDead ? '#94a3b8' : hpColor}; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                ${p.name} <small style="color:#64748b; font-weight:normal;">${p.isMonster ? 'Inimigo' : `Nív ${p.level || 1} ${p.class || ''}`}</small>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; margin-top:3px; font-size:11px;">
-                                <span>${canSeeDetails ? `HP: ${p.hp}/${p.hpMax}${tempHPText}` : 'Inimigo Desconhecido'}</span>
-                                <div style="display:flex; align-items:center; gap:5px;">
-                                    ${p.condition && p.condition !== 'Nenhuma' ? `<span class="condition-badge" style="background:${isDead ? '#475569' : hpColor}">${p.condition}</span>` : ''}
-                                    ${canSeeDetails ? `<span>🛡️ ${p.ac}</span>` : ''}
-                                </div>
-                            </div>
-                            ${canSeeDetails ? `
-                            <div style="width:100%; height:5px; background:#334155; border-radius:3px; margin-top:4px; overflow:hidden; position:relative;">
-                                <div style="width:${Math.max(0, Math.min(100, hpPercent))}%; height:100%; background:${isDead ? '#475569' : hpColor}; transition: width 0.3s;"></div>
-                                ${p.tempHP > 0 ? `<div style="position:absolute; top:0; left:0; width:${Math.min(100, (p.tempHP / p.hpMax) * 100)}%; height:100%; background:rgba(88, 166, 255, 0.5); border-right:1px solid #58a6ff;"></div>` : ''}
-                            </div>` : ''}
-                        </div>
-                    </div>
-                    ${iamTheMestre && (p.isMonster ? expandedMonsters.has(p.id) : expandedPlayers.has(p.id)) ? `
-                        <div class="mestre-hp-hub">
-                            <div class="mestre-hp-controls">
-                                <input type="text" id="${p.isMonster ? 'monster-' : ''}hp-val-${p.id}" placeholder="1d6+5" onclick="event.stopPropagation()">
-                                <button onclick="${p.isMonster ? `monsterHPAction('${p.id}', 'damage')` : `remoteHPAction('${p.id}', 'damage')`}" style="background:#ff4d4d; border-color:#ff4d4d; color:white;">Dano</button>
-                                <button onclick="${p.isMonster ? `monsterHPAction('${p.id}', 'heal')` : `remoteHPAction('${p.id}', 'heal')`}" style="background:#4dff88; border-color:#4dff88; color:#0f172a;">Cura</button>
-                                <button onclick="${p.isMonster ? `monsterHPAction('${p.id}', 'temp')` : `remoteHPAction('${p.id}', 'temp')`}" style="background:#58a6ff; border-color:#58a6ff; color:white;">Temp</button>
-                            </div>
-                        </div>
-                    ` : ''}
-                `;
-                list.appendChild(card);
-            });
-            document.getElementById('mesa-display').innerText = mesaCodigo;
-        }
-
 
             // Salvar valores atuais dos inputs para não perder durante a digitação
             const currentInputs = {};
@@ -5126,67 +4967,6 @@
             }
         }
 
-        
-        
-        function reorderMestreEntities(draggedId, targetId) {
-            if (!iamTheMestre) return;
-            
-            // Se mestreOrder não contiver todos, inicializar com a ordem atual do painel
-            if (!mestreOrder || mestreOrder.length === 0) {
-                const list = document.getElementById('mestre-list');
-                mestreOrder = Array.from(list.querySelectorAll('.mestre-card')).map(c => c.getAttribute('data-id'));
-            }
-
-            const fromIdx = mestreOrder.indexOf(draggedId);
-            const toIdx = mestreOrder.indexOf(targetId);
-
-            if (fromIdx !== -1 && toIdx !== -1) {
-                const item = mestreOrder.splice(fromIdx, 1)[0];
-                mestreOrder.splice(toIdx, 0, item);
-                syncMestreState();
-                renderMestrePanel();
-            }
-        }
-);
-
-            // Se mestreOrder não contiver todos, inicializar
-            if (!mestreOrder || mestreOrder.length === 0) {
-                mestreOrder = entities;
-            }
-
-            const fromIdx = mestreOrder.indexOf(draggedId);
-            const toIdx = mestreOrder.indexOf(targetId);
-
-            if (fromIdx !== -1 && toIdx !== -1) {
-                mestreOrder.splice(toIdx, 0, mestreOrder.splice(fromIdx, 1)[0]);
-                syncMestreState();
-                renderMestrePanel();
-            }
-        }
-
-        function syncMestreState() {
-            if (iamTheMestre && mqttClient && mqttClient.connected) {
-                mqttClient.publish(`dnd/mesa/${mesaCodigo}/_mestre_state`, JSON.stringify({
-                    order: mestreOrder,
-                    monsters: publicMonsters
-                }), { retain: true });
-            }
-        }
-
-        function toggleMonsterPublic(monsterId) {
-            const m = mestreMonsters.find(x => x.id === monsterId);
-            if (!m) return;
-
-            if (publicMonsters[monsterId]) {
-                delete publicMonsters[monsterId];
-            } else {
-                publicMonsters[monsterId] = { ...m, isMonster: true, hidden: false };
-            }
-            syncMestreState();
-            renderBestiary();
-            renderMestrePanel();
-        }
-
         function toggleExpandPlayer(playerId) {
             if (expandedPlayers.has(playerId)) expandedPlayers.delete(playerId);
             else expandedPlayers.add(playerId);
@@ -5254,7 +5034,6 @@
                 mestreId = myId;
                 mqttClient.publish(`dnd/mesa/${mesaCodigo}/_mestre`, JSON.stringify({ id: myId }), { retain: true, qos: 1 });
                 console.log("Agora você é o mestre.");
-                syncMestreState();
             } else {
                 iamTheMestre = false;
                 mestreId = null;
@@ -5613,7 +5392,7 @@
                             <div style="display:flex; justify-content:space-between; margin-top:3px; font-size:11px; color:#94a3b8;">
                                 <span>HP: ${m.hp}/${m.hpMax}${tempHPText}</span>
                                 <div style="display:flex; align-items:center; gap:5px;">
-                                    <button onclick="event.stopPropagation(); toggleMonsterPublic('${m.id}')" title="Tornar Visível para Jogadores" style="padding:2px 5px; font-size:10px; opacity: ${publicMonsters[m.id] ? '1' : '0.3'}; border-color: ${publicMonsters[m.id] ? 'var(--accent-color)' : 'var(--border-color)'};">👁️</button>${m.condition && m.condition !== 'Nenhuma' ? `<span class="condition-badge" style="background:${hpColor}">${m.condition}</span>` : ''}
+                                    ${m.condition && m.condition !== 'Nenhuma' ? `<span class="condition-badge" style="background:${hpColor}">${m.condition}</span>` : ''}
                                     <span>🛡️ ${m.ac}</span>
                                 </div>
                             </div>
@@ -5710,7 +5489,6 @@
 
         function resetMestrePanel() {
             jogadoresOnline = {};
-            
             expandedPlayers.clear();
             
             // Se eu era o mestre ou ao reiniciar a página, revogamos o título
@@ -6130,22 +5908,6 @@
         }
         #mestre-list::-webkit-scrollbar { width: 4px; }
         #mestre-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
-    
-        .mestre-card.monster-enemy {
-            border: 2px solid #ff4d4d;
-            box-shadow: 0 0 10px rgba(255, 77, 77, 0.3);
-        }
-        .mestre-card.monster-enemy .mestre-card-name {
-            color: #ff4d4d !important;
-        }
-        .mestre-card.dragging {
-            opacity: 0.4;
-            border: 2px dashed var(--accent-color);
-        }
-        .mestre-card.drag-over {
-            border-top: 3px solid var(--accent-color);
-        }
-
     </style>
 </body>
 </html>
